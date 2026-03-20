@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-20T13:35:57.313Z",
+  "lastUpdated": "2026-03-20T14:05:13.330Z",
   "activeFeatures": [
     "config",
     "agenticworker",
@@ -74,7 +74,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-20T08:31:22.634Z",
-        "lastUpdated": "2026-03-20T13:25:50.731Z"
+        "lastUpdated": "2026-03-20T14:02:39.975Z"
       },
       "lastFile": "c:\\git\\agentic-worker\\src\\main\\java\\com\\example\\worker\\agent\\event\\model\\IssueStatusChangedEvent.java"
     },
@@ -87,9 +87,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-20T08:31:48.192Z",
-        "lastUpdated": "2026-03-20T13:25:55.311Z"
+        "lastUpdated": "2026-03-20T14:04:41.442Z"
       },
-      "lastFile": "c:\\git\\agentic-worker\\src\\main\\java\\com\\example\\worker\\agent\\application\\port\\AgentJobRepository.java"
+      "lastFile": "c:\\git\\agentic-worker\\src\\main\\java\\com\\example\\worker\\issue\\application\\port\\IssueEventPublisher.java"
     },
     "dto": {
       "phase": "do",
@@ -113,9 +113,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-20T08:32:04.987Z",
-        "lastUpdated": "2026-03-20T13:35:38.522Z"
+        "lastUpdated": "2026-03-20T14:05:13.330Z"
       },
-      "lastFile": "c:\\git\\agentic-worker\\src\\main\\java\\com\\example\\worker\\agent\\application\\service\\AgentWorkerService.java"
+      "lastFile": "c:\\git\\agentic-worker\\src\\main\\java\\com\\example\\worker\\issue\\application\\service\\IssueCommandService.java"
     },
     "datasource": {
       "phase": "do",
@@ -178,9 +178,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-20T08:35:26.376Z",
-        "lastUpdated": "2026-03-20T13:28:08.477Z"
+        "lastUpdated": "2026-03-20T14:04:48.722Z"
       },
-      "lastFile": "c:\\git\\agentic-worker\\src\\main\\java\\com\\example\\worker\\agent\\infrastructure\\kafka\\IssueCreatedEventConsumer.java"
+      "lastFile": "c:\\git\\agentic-worker\\src\\main\\java\\com\\example\\worker\\issue\\infrastructure\\kafka\\KafkaIssueEventPublisher.java"
     },
     "js": {
       "phase": "do",
@@ -269,7 +269,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-20T13:28:24.315Z",
-        "lastUpdated": "2026-03-20T13:35:57.312Z"
+        "lastUpdated": "2026-03-20T14:04:26.023Z"
       },
       "lastFile": "c:\\git\\agentic-worker\\src\\main\\java\\com\\example\\worker\\issue\\application\\listener\\IssueStatusChangedEventListener.java"
     }
@@ -282,7 +282,7 @@
   "session": {
     "startedAt": "2026-03-20T00:13:30.039Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-03-20T13:35:57.313Z"
+    "lastActivity": "2026-03-20T14:05:13.330Z"
   },
   "history": [
     {
@@ -804,6 +804,84 @@
     {
       "timestamp": "2026-03-20T13:35:57.312Z",
       "feature": "listener",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:01:30.116Z",
+      "feature": "service",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:01:41.900Z",
+      "feature": "service",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:01:58.947Z",
+      "feature": "service",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:02:29.863Z",
+      "feature": "service",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:02:39.975Z",
+      "feature": "model",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:02:46.808Z",
+      "feature": "service",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:02:56.136Z",
+      "feature": "service",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:03:00.752Z",
+      "feature": "service",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:03:05.123Z",
+      "feature": "service",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:04:26.023Z",
+      "feature": "listener",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:04:41.442Z",
+      "feature": "port",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:04:48.722Z",
+      "feature": "kafka",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-20T14:05:13.330Z",
+      "feature": "service",
       "phase": "do",
       "action": "updated"
     }

@@ -4,6 +4,7 @@ import com.example.worker.agent.application.exception.AgentExecutionException;
 import com.example.worker.agent.application.port.AgentJobRepository;
 import com.example.worker.agent.domain.model.AgentJob;
 import com.example.worker.agent.event.model.IssueStatusChangedEvent;
+import com.example.worker.issue.domain.model.IssueStatus;
 import com.example.worker.issue.event.model.IssueCreatedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,7 @@ public class AgentWorkerService {
         AgentJob job = agentJobRepository.save(
                 AgentJob.create(event.issueId(), event.projectId(), branchName));
 
-        eventPublisher.publishEvent(IssueStatusChangedEvent.of(event.issueId(), "IN_PROGRESS"));
+        eventPublisher.publishEvent(IssueStatusChangedEvent.of(event.issueId(), IssueStatus.IN_PROGRESS));
 
         try {
             job.start();
@@ -57,7 +58,7 @@ public class AgentWorkerService {
 
             job.complete(prUrl);
             agentJobRepository.save(job);
-            eventPublisher.publishEvent(IssueStatusChangedEvent.of(event.issueId(), "IN_REVIEW"));
+            eventPublisher.publishEvent(IssueStatusChangedEvent.of(event.issueId(), IssueStatus.IN_REVIEW));
 
             log.info("[AgentWorker] 완료 이슈 #{}: {}", event.issueNumber(), prUrl);
 
@@ -65,7 +66,7 @@ public class AgentWorkerService {
             log.error("[AgentWorker] 실패 이슈 #{}: {}", event.issueNumber(), e.getMessage());
             job.fail(e.getMessage());
             agentJobRepository.save(job);
-            eventPublisher.publishEvent(IssueStatusChangedEvent.of(event.issueId(), "FAILED"));
+            eventPublisher.publishEvent(IssueStatusChangedEvent.of(event.issueId(), IssueStatus.FAILED));
         }
     }
 

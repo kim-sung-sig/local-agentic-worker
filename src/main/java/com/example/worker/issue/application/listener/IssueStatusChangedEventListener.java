@@ -2,7 +2,6 @@ package com.example.worker.issue.application.listener;
 
 import com.example.worker.agent.event.model.IssueStatusChangedEvent;
 import com.example.worker.issue.application.service.IssueCommandService;
-import com.example.worker.issue.domain.model.IssueStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -21,8 +20,7 @@ public class IssueStatusChangedEventListener {
 
     @EventListener
     public void on(IssueStatusChangedEvent event) {
-        IssueStatus newStatus = IssueStatus.valueOf(event.newStatus());
-        log.info("[Issue] 상태 변경: {} → {}", event.issueId(), newStatus);
-        issueCommandService.updateStatus(event.issueId(), newStatus);
+        log.info("[Issue] 상태 변경: {} → {}", event.issueId(), event.newStatus());
+        issueCommandService.updateStatus(event.issueId(), event.newStatus());
     }
 }
