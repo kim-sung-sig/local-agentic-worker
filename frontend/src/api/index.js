@@ -13,4 +13,6 @@ export const IssueApi = {
   get:          (id)                 => http.get(`/issues/${id}`),
   create:       (projectId, payload) => http.post(`/projects/${projectId}/issues`, payload),
   updateStatus: (id, status)         => http.patch(`/issues/${id}/status`, { status }),
+  getAgentJob:  (id)                 => http.get(`/issues/${id}/agent-job`),
+  review:       (id, payload)        => http.post(`/issues/${id}/review`, payload),
 }

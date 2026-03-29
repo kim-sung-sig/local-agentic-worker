@@ -2,7 +2,9 @@ package com.example.worker.agent.domain.model;
 
 public enum AgentJobStatus {
     PENDING,
-    RUNNING,
+    PLANNING,
+    CODING,
+    VERIFYING,
     SUCCEEDED,
     FAILED
 }

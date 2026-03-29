@@ -6,15 +6,13 @@ import com.example.worker.agent.domain.model.AgentJob;
 import com.example.worker.agent.event.model.IssueStatusChangedEvent;
 import com.example.worker.issue.domain.model.IssueStatus;
 import com.example.worker.issue.event.model.IssueCreatedEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class AgentWorkerService {
-
-    private static final Logger log = LoggerFactory.getLogger(AgentWorkerService.class);
 
     private final AgentJobRepository agentJobRepository;
     private final GitBranchService gitBranchService;
@@ -42,13 +40,19 @@ public class AgentWorkerService {
         eventPublisher.publishEvent(IssueStatusChangedEvent.of(event.issueId(), IssueStatus.IN_PROGRESS));
 
         try {
-            job.start();
+            job.startPlanning();
             agentJobRepository.save(job);
 
             gitBranchService.createBranch(event.projectLocalPath(), event.baseBranch(), branchName);
 
+            job.startCoding();
+            agentJobRepository.save(job);
+
             String prompt = PromptBuilder.build(event);
             String claudeOutput = claudeAgentExecutor.execute(event.projectLocalPath(), prompt);
+
+            job.startVerifying();
+            agentJobRepository.save(job);
 
             pullRequestService.push(event.projectLocalPath(), branchName);
             String prTitle = "feat: #%d %s".formatted(event.issueNumber(), event.title());

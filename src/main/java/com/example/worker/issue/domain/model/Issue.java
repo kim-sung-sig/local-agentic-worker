@@ -63,7 +63,8 @@ public class Issue {
         return switch (from) {
             case OPEN -> to == IssueStatus.IN_PROGRESS || to == IssueStatus.CLOSED;
             case IN_PROGRESS -> to == IssueStatus.IN_REVIEW || to == IssueStatus.FAILED;
-            case IN_REVIEW -> to == IssueStatus.CLOSED || to == IssueStatus.IN_PROGRESS;
+            case IN_REVIEW -> to == IssueStatus.CLOSED || to == IssueStatus.REJECTED || to == IssueStatus.IN_PROGRESS;
+            case REJECTED -> to == IssueStatus.IN_PROGRESS;
             case FAILED -> to == IssueStatus.IN_PROGRESS || to == IssueStatus.CLOSED;
             case CLOSED -> false;
         };

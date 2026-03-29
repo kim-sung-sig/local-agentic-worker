@@ -11,5 +11,7 @@ public class AgentProperties {
 
     private String cliPath = "claude";
     private int timeoutMinutes = 10;
+    private String allowedTools = "Bash(git *),Bash(./gradlew *),Bash(npm *),Write(src/**),Edit(src/**),Read(**)";
+
 
 }

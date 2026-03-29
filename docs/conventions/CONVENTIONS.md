@@ -42,11 +42,6 @@ Each bounded context follows this strict layering:
 ├── event/
 │   └── model/        ← 이벤트 페이로드 값 객체 (불변 record, 도메인 이벤트 데이터)
 │
-├── infrastructure/
-│   ├── kafka/        ← Kafka consumer/producer 어댑터
-│   ├── redis/        ← Cache + Pub/Sub 어댑터
-│   └── datasource/   ← JPA Repository 어댑터 (domain port 구현)
-│
 └── api/
     ├── controller/   ← REST 엔드포인트 (얇음, application layer 위임만)
     ├── request/      ← HTTP 요청 DTO (record, 불변)

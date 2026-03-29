@@ -16,9 +16,42 @@ For detailed architecture and coding rules, see [docs/conventions/CONVENTIONS.md
 
 ## Project Overview
 
+**자동 개발 워크플로우 엔진** — JIRA 유사 티켓 시스템 + AI 에이전트 자동 개발 파이프라인
+
+### 핵심 워크플로우
+
+```
+티켓 생성 (Issue)
+  → Kafka 이벤트 수신 (IssueCreatedEvent)
+  → 계획 수립 + 사용자 승인
+  → Claude 에이전트 자동 개발 (ClaudeAgentExecutor)
+  → Loop 자가 검증 (gap-detector / zero-script-qa)
+  → Draft PR 생성 → 사용자 검토 (승인 / 반려 + 피드백)
+  → 반려 시 피드백 반영 후 재개발
+```
+
+### 주요 도메인
+
+| 도메인 | 역할 |
+|--------|------|
+| `project` | 프로젝트 등록·조회 |
+| `issue` | 티켓(이슈) 생성·상태 관리 (OPEN → IN_PROGRESS → IN_REVIEW → DONE/FAILED) |
+| `agent` | AgentJob 생명주기 관리, Claude 실행, Git/PR 자동화 |
+
 **Gradle monorepo** — Java 21 + Spring Boot 3.5.12
 
 **Architecture**: [docs/conventions/CONVENTIONS.md](docs/conventions/CONVENTIONS.md) 참조
+
+---
+
+## 개발 방법론 & 도구
+
+- **계획·설계 단계**: `/pdca plan` → `/pdca design` (bkit PDCA 필수 사용)
+- **구현 단계**: `superpowers:test-driven-development`, `superpowers:executing-plans` 필수 사용
+- **피드백 관리**: `/fb` 스킬 — 피드백 수집 → `.skill-lab/feedback/` MD 관리 → rules/skills 반영
+  - `feedback-capture`: 작업 중 피드백 구조화 저장
+  - `feedback-apply`: 미처리 피드백을 rules/skills에 적용
+- **코드 검증**: `superpowers:verification-before-completion` (완료 주장 전 필수)
 
 ---
 

@@ -1,5 +1,8 @@
 package com.example.worker.issue.api.controller;
 
+import com.example.worker.agent.api.response.AgentJobResponse;
+import com.example.worker.agent.application.port.AgentJobRepository;
+import com.example.worker.agent.domain.model.AgentJob;
 import com.example.worker.issue.api.request.CreateIssueRequest;
 import com.example.worker.issue.api.request.UpdateIssueStatusRequest;
 import com.example.worker.issue.api.response.IssueResponse;
@@ -11,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,10 +23,13 @@ public class IssueController {
 
     private final IssueCommandService commandService;
     private final IssueQueryService queryService;
+    private final AgentJobRepository agentJobRepository;
 
-    public IssueController(IssueCommandService commandService, IssueQueryService queryService) {
+    public IssueController(IssueCommandService commandService, IssueQueryService queryService,
+                           AgentJobRepository agentJobRepository) {
         this.commandService = commandService;
         this.queryService = queryService;
+        this.agentJobRepository = agentJobRepository;
     }
 
     @PostMapping("/api/projects/{projectId}/issues")
@@ -51,5 +58,14 @@ public class IssueController {
                                              @Valid @RequestBody UpdateIssueStatusRequest request) {
         commandService.updateStatus(id, request.status());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/issues/{id}/agent-job")
+    public ResponseEntity<AgentJobResponse> getAgentJob(@PathVariable UUID id) {
+        return agentJobRepository.findByIssueId(id).stream()
+                .max(Comparator.comparing(AgentJob::getStartedAt))
+                .map(AgentJobResponse::from)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

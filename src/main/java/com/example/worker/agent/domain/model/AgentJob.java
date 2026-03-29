@@ -46,7 +46,19 @@ public class AgentJob {
     }
 
     public void start() {
-        this.status = AgentJobStatus.RUNNING;
+        this.status = AgentJobStatus.PLANNING;
+    }
+
+    public void startPlanning() {
+        this.status = AgentJobStatus.PLANNING;
+    }
+
+    public void startCoding() {
+        this.status = AgentJobStatus.CODING;
+    }
+
+    public void startVerifying() {
+        this.status = AgentJobStatus.VERIFYING;
     }
 
     public void complete(String prUrl) {

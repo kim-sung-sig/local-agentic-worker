@@ -12,9 +12,22 @@ import java.util.concurrent.atomic.AtomicReference;
  * Drains stdout in a virtual thread to prevent pipe-buffer deadlock
  * when process output exceeds the OS pipe buffer size.
  */
-class ProcessRunner {
+class ProcessRunner implements CommandRunner {
 
-    private ProcessRunner() {}
+    static final ProcessRunner INSTANCE = new ProcessRunner(10, TimeUnit.MINUTES);
+
+    private final long timeout;
+    private final TimeUnit unit;
+
+    ProcessRunner(long timeout, TimeUnit unit) {
+        this.timeout = timeout;
+        this.unit = unit;
+    }
+
+    @Override
+    public String run(String workDir, String... cmd) {
+        return run(workDir, timeout, unit, cmd);
+    }
 
     static String run(String workDir, long timeout, TimeUnit unit, String... cmd) {
         AtomicReference<String> outputRef = new AtomicReference<>("");
