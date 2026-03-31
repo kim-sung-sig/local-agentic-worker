@@ -1,6 +1,6 @@
 ---
 name: feedback-capture
-description: 작업 중 사용자가 내리는 피드백을 구조화하여 .skill-lab/feedback/YYYY-MM-DD-session.md에 append-only로 저장한다. /fb 또는 /fb flush로 호출한다. (/feedback은 Claude Code 내장 명령어이므로 사용 불가)
+description: 작업 중 사용자가 내리는 피드백을 구조화하여 docs/feedback/YYYY-MM-DD-session.md에 append-only로 저장한다. /fb 또는 /fb flush로 호출한다. (/feedback은 Claude Code 내장 명령어이므로 사용 불가)
 ---
 
 # feedback-capture

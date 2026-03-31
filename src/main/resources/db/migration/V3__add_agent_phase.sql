@@ -1,0 +1,3 @@
+ALTER TABLE agent_job
+    ADD COLUMN phase         VARCHAR(20)  NOT NULL DEFAULT 'DEVELOP',
+    ADD COLUMN document_path VARCHAR(500);

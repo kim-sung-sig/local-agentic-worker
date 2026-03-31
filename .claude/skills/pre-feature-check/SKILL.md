@@ -20,7 +20,7 @@ description: 새 피처/작업을 시작하기 전에 현재 설치된 스킬 �
 - 현재 프로젝트 경로의 스킬 목록
 
 ## 출력
-- 현재 설치된 스킬 목록 (`.agents/skills/`, `.skill-lab/skills/`)
+- 현재 설치된 스킬 목록 (`.claude/skills/`)
 - skills.sh 검색 결과 (`npx skills find <키워드>`)
 - 중복/보완 분석 결과
 - 도입 제안 (설치 명령 + 이유) 또는 "기존 스킬로 충분" 판정
@@ -29,8 +29,7 @@ description: 새 피처/작업을 시작하기 전에 현재 설치된 스킬 �
 
 1. **현재 스킬 목록 확인**
    ```
-   .agents/skills/ 디렉터리 나열
-   .skill-lab/skills/ 디렉터리 나열
+   .claude/skills/ 디렉터리 나열
    ```
 
 2. **키워드 추출**

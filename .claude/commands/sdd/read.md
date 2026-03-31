@@ -1,29 +1,28 @@
 ---
 name: "sdd:read"
-description: "SDD를 개발자 구현 브리프로 변환합니다.
-  'SDD 읽기', '스펙 파악', '설계 이해', '개발 브리프', '구현 준비',
-  'read SDD', 'understand spec', 'developer brief', 'load design', 'parse spec' 등의 요청에 반응합니다."
+description: "[Deprecated] sdd:design으로 대체되었습니다. Plan 문서를 Design 문서로 변환하려면 /sdd:design을 사용하세요."
 ---
 
-Translate an SDD into a developer handoff brief that is decision-complete for implementation.
+# ⚠️ sdd:read — Deprecated
+
+이 커맨드는 `/sdd:design`으로 대체되었습니다.
+
+## 마이그레이션
+
+| 이전 | 현재 |
+|------|------|
+| `/sdd:read docs/specs/SDD_<slug>.md` | `/sdd:design docs/01-plan/features/<slug>.plan.md` |
+
+## 이유
+
+SDD 스킬체인이 `.bkit PDCA` 플로우와 통합되면서 단계가 명확히 분리되었습니다:
+- Plan 문서 작성: `/sdd:requirements`
+- Design 문서 작성: `/sdd:design` ← 이 단계
+
+## 즉시 실행
+
+`$ARGUMENTS`가 있으면 `/sdd:design`으로 자동 위임합니다:
 
 Input: $ARGUMENTS
-(Provide the SDD path, e.g. `docs/specs/SDD_approval-system.md`, and optionally the planning doc path.)
 
-## Instructions
-
-1. Read the SDD and extract: goals, constraints, required outputs, API/interface changes, test expectations.
-2. If a planning document is provided, merge its goals/non-goals and risks.
-3. Produce a developer brief at `docs/briefs/<slug>_dev-brief.md` with:
-   - **Goal** (1–3 bullets)
-   - **Scope** (paths/modules to touch)
-   - **Constraints** (must/forbidden)
-   - **Done Criteria** (explicit checks)
-   - **Tests** (run or skip + reason)
-   - **Inputs** (links to SDD and planning doc)
-4. Do not make implementation decisions unless already specified in the SDD.
-5. The brief format must be compatible with `/pdca do` implementation phase.
-
-## Skill Connection
-
-Output brief → used as input for `/sdd:skeleton` or `/pdca do`.
+위의 경로를 받아 `/sdd:design`의 절차를 따라 실행하세요.

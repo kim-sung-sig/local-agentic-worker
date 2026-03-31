@@ -46,9 +46,11 @@ For detailed architecture and coding rules, see [docs/conventions/CONVENTIONS.md
 
 ## 개발 방법론 & 도구
 
-- **계획·설계 단계**: `/pdca plan` → `/pdca design` (bkit PDCA 필수 사용)
-- **구현 단계**: `superpowers:test-driven-development`, `superpowers:executing-plans` 필수 사용
-- **피드백 관리**: `/fb` 스킬 — 피드백 수집 → `.skill-lab/feedback/` MD 관리 → rules/skills 반영
+- **계획·설계 단계**: `/sdd:requirements` → `/sdd:design` (.bkit plan/design 자동 연동)
+- **구현 단계**: `/sdd:skeleton` → `/sdd:tests` (.bkit do 단계)
+- **검증 단계**: `/sdd:review` (.bkit check + matchRate 자동 기록)
+- **상태 확인**: `/sdd:status` — 언제든 현재 .bkit PDCA 상태 조회 가능
+- **피드백 관리**: `/fb` 스킬 — 피드백 수집 → `docs/feedback/` MD 관리 → rules/skills 반영
   - `feedback-capture`: 작업 중 피드백 구조화 저장
   - `feedback-apply`: 미처리 피드백을 rules/skills에 적용
 - **코드 검증**: `superpowers:verification-before-completion` (완료 주장 전 필수)
@@ -81,6 +83,14 @@ All commands are in [`.claude/commands/`](.claude/commands/) (V2.0 — skill당 
 
 **PDCA phases (bkit)**: `/pdca plan` → `/pdca design` → `/pdca do` → `/pdca analyze` → `/pdca report`
 
-**SDD skill chain**: `/sdd:requirements` → `/sdd:read` → `/sdd:skeleton` → `/sdd:tests` → `/sdd:review`
+**SDD skill chain (.bkit 통합)**:
+```
+/sdd:requirements  →  .bkit plan (1)    →  docs/01-plan/features/<slug>.plan.md
+/sdd:design        →  .bkit design (2)  →  docs/02-design/features/<slug>.design.md
+/sdd:skeleton      →  .bkit do (3)      →  src/ 코드 스텁
+/sdd:tests         →  .bkit do (3)      →  src/test/ 테스트
+/sdd:review        →  .bkit check (4)   →  matchRate 기록
+/sdd:status        →  .bkit 상태 조회
+```
 
 **Utilities**: `/explain`, `/patch`, `/refactor`, `/perf`, `/security`, `/docs`, `/jpa`

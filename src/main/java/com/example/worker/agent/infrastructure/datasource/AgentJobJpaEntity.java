@@ -3,6 +3,7 @@ package com.example.worker.agent.infrastructure.datasource;
 import com.example.worker.agent.domain.model.AgentJob;
 import com.example.worker.agent.domain.model.AgentJobId;
 import com.example.worker.agent.domain.model.AgentJobStatus;
+import com.example.worker.agent.domain.model.AgentPhase;
 import jakarta.persistence.*;
 
 import java.time.Instant;
@@ -26,6 +27,10 @@ class AgentJobJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private AgentPhase phase;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private AgentJobStatus status;
 
     @Column(name = "started_at", nullable = false)
@@ -40,6 +45,12 @@ class AgentJobJpaEntity {
     @Column(name = "pr_url")
     private String prUrl;
 
+    @Column(name = "document_path")
+    private String documentPath;
+
+    @Column(name = "claude_session_id")
+    private String claudeSessionId;
+
     protected AgentJobJpaEntity() {}
 
     static AgentJobJpaEntity from(AgentJob job) {
@@ -48,17 +59,21 @@ class AgentJobJpaEntity {
         e.issueId = job.getIssueId();
         e.projectId = job.getProjectId();
         e.branchName = job.getBranchName();
+        e.phase = job.getPhase();
         e.status = job.getStatus();
         e.startedAt = job.getStartedAt();
         e.finishedAt = job.getFinishedAt();
         e.errorMessage = job.getErrorMessage();
         e.prUrl = job.getPrUrl();
+        e.documentPath = job.getDocumentPath();
+        e.claudeSessionId = job.getClaudeSessionId();
         return e;
     }
 
     AgentJob toDomain() {
         return AgentJob.reconstitute(
                 AgentJobId.of(id), issueId, projectId,
-                branchName, status, startedAt, finishedAt, errorMessage, prUrl);
+                branchName, phase, status, startedAt, finishedAt,
+                errorMessage, prUrl, documentPath, claudeSessionId);
     }
 }

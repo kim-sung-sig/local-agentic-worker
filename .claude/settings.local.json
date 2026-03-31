@@ -7,7 +7,11 @@
       "Bash(xargs grep:*)",
       "Bash(find c:/git/chat-application/chat-platform/apps/chat/chat-server/build -name TEST-*.xml)",
       "Bash(./gradlew :apps:chat:chat-server:test)",
-      "WebFetch(domain:docs.github.com)"
+      "WebFetch(domain:docs.github.com)",
+      "Bash(./gradlew test:*)",
+      "Bash(grep -oE \"to contain:.{0,100}|NullPointerException.{0,100}|Exception.{0,100}\")",
+      "Bash(javap -classpath /c/Users/kimsungsig/.gradle/caches/modules-2/files-2.1/com.anthropic/anthropic-java-core/2.17.0/d8c9f20ba69fe7f480bb5197d9da46a76a84aae7/anthropic-java-core-2.17.0.jar com.anthropic.models.messages.MessageParam)",
+      "Bash(javap -classpath /c/Users/kimsungsig/.gradle/caches/modules-2/files-2.1/com.anthropic/anthropic-java-core/2.17.0/d8c9f20ba69fe7f480bb5197d9da46a76a84aae7/anthropic-java-core-2.17.0.jar com.anthropic.models.messages.MessageCreateParams$Builder)"
     ],
     "deny": []
   }

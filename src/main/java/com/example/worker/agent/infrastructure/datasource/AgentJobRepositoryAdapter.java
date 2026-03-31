@@ -3,6 +3,8 @@ package com.example.worker.agent.infrastructure.datasource;
 import com.example.worker.agent.application.port.AgentJobRepository;
 import com.example.worker.agent.domain.model.AgentJob;
 import com.example.worker.agent.domain.model.AgentJobId;
+import com.example.worker.agent.domain.model.AgentJobStatus;
+import com.example.worker.agent.domain.model.AgentPhase;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -33,5 +35,12 @@ class AgentJobRepositoryAdapter implements AgentJobRepository {
         return jpaRepository.findByIssueId(issueId).stream()
                 .map(AgentJobJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Optional<AgentJob> findLatestSucceededByIssueIdAndPhase(UUID issueId, AgentPhase phase) {
+        return jpaRepository
+                .findTopByIssueIdAndPhaseAndStatusOrderByStartedAtDesc(issueId, phase, AgentJobStatus.SUCCEEDED)
+                .map(AgentJobJpaEntity::toDomain);
     }
 }

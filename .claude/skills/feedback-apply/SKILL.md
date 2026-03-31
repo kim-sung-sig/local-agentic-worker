@@ -1,6 +1,6 @@
 ---
 name: feedback-apply
-description: .skill-lab/feedback/ 에 쌓인 미처리 피드백을 분석하여 rules, skills 파일 수정을 제안하고 사용자 확인 후 적용한다. /fb apply로 호출하거나 주간 스케줄로 자동 실행한다. (/feedback은 Claude Code 내장 명령어이므로 사용 불가)
+description: docs/feedback/ 에 쌓인 미처리 피드백을 분석하여 rules, skills 파일 수정을 제안하고 사용자 확인 후 적용한다. /fb apply로 호출하거나 주간 스케줄로 자동 실행한다. (/feedback은 Claude Code 내장 명령어이므로 사용 불가)
 ---
 
 # feedback-apply
@@ -17,22 +17,19 @@ description: .skill-lab/feedback/ 에 쌓인 미처리 피드백을 분석하여
 - ⚠️ `/feedback`은 Claude Code 내장 버그 리포트 명령어 — 절대 사용하지 않는다
 
 ## 입력
-- `.skill-lab/feedback/*.md` — 모든 세션 피드백 파일
-- `.skill-lab/skills/*/SKILL.md` — 현재 실험 스킬 파일들
-- `.skill-lab/rules/*.md` — 현재 실험 규칙 파일들
-- (병합 후) `agent-instructions/skills/*/SKILL.md`, `agent-instructions/rules/*.md`
+- `docs/feedback/*.md` — 모든 세션 피드백 파일
 
 ## 출력
 - 변경 제안 목록 (사용자 확인 전)
 - 사용자 확인 후: 실제 파일 수정
-- `.skill-lab/feedback/applied-log.md` 에 이력 append
+- `.docs/feedback/applied/log.md` 에 이력 append
 - 처리된 피드백 항목 `[x] 적용됨 YYYY-MM-DD` 마킹
 
 ## 워크플로우
 
 ### 1. 미처리 피드백 수집
 ```
-.skill-lab/feedback/*.md 읽기
+docs/feedback/*.md 읽기
 "상태: [ ] 미처리" 항목만 추출
 ```
 
@@ -77,7 +74,7 @@ other    → 몇 개
 
 사용자가 확인한 항목:
 1. 해당 파일 수정 (append 또는 targeted edit)
-2. `.skill-lab/feedback/applied-log.md` 에 아래 형식으로 append:
+2. `dosc/feedback/applied/log.md` 에 아래 형식으로 append:
    ```markdown
    ## YYYY-MM-DD 적용 이력
    - 피드백 #{번호}: {원문 요약} → {대상 파일} 수정
@@ -101,6 +98,6 @@ other    → 몇 개
 - 모든 피드백의 영향 대상이 "미정"이다 → 사용자에게 방향 확인 후 진행
 
 ## 차단 시 반환 형식
-- 현재 stage: `feedback-apply`
+- 현재 stage: `fb-apply`
 - 차단 사유
 - 다음 필요 입력

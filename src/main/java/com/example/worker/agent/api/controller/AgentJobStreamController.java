@@ -3,6 +3,7 @@ package com.example.worker.agent.api.controller;
 import com.example.worker.agent.application.port.AgentLogStore;
 import com.example.worker.agent.domain.model.AgentJobId;
 import com.example.worker.agent.domain.model.AgentLog;
+import com.example.worker.agent.domain.model.LogType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -50,6 +51,12 @@ public class AgentJobStreamController {
                         emitter.send(SseEmitter.event()
                                 .data(JSON.writeValueAsString(toPayload(agentLog)))
                                 .reconnectTime(3000));
+                        if (agentLog.type() == LogType.STATUS_CHANGE &&
+                                (agentLog.content().equals("SUCCEEDED") || agentLog.content().equals("FAILED"))) {
+                            emitter.send(SseEmitter.event().name("done").data(""));
+                            logStore.unregisterSink(id);
+                            emitter.complete();
+                        }
                     } catch (Exception e) {
                         logStore.unregisterSink(id);
                         emitter.completeWithError(e);
