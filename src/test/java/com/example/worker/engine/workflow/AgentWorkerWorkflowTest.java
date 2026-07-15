@@ -30,6 +30,7 @@ import io.temporal.common.WorkflowExecutionHistory;
 import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.testing.WorkflowReplayer;
 import io.temporal.worker.Worker;
+import org.mockito.InOrder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,9 +41,11 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -280,6 +283,35 @@ class AgentWorkerWorkflowTest {
         verify(activities, times(2)).implement(any());
         verify(activities, times(2)).runQualityAssurance(any());
         verify(activities, times(2)).recordAttemptHistory(any());
+    }
+
+    @Test
+    @DisplayName("MERGE는 QA 통과 및 REVIEW_MERGE approve 이전에 스케줄되지 않는다")
+    void reviewMerge_mergeIsNotScheduledBeforeApproval() throws Exception {
+        AgentWorkerWorkflow stub = newStub("merge-order-run");
+        CompletableFuture<String> future = WorkflowClient.execute(stub::run, newRequest("merge-order-run"));
+
+        awaitStage(stub, WorkflowStage.INTAKE);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.PLANNING);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.QA);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.REVIEW_MERGE);
+
+        // REVIEW_MERGE 게이트에 도달 — CREATE_DRAFT_PR은 이미 실행됐지만 아직 승인 전이라 MERGE는 없어야 한다
+        verify(activities, times(1)).manageSourceControl(argThat(req -> "CREATE_DRAFT_PR".equals(req.action())));
+        verify(activities, never()).manageSourceControl(argThat(req -> "MERGE".equals(req.action())));
+
+        stub.approve();
+        String result = future.get(10, TimeUnit.SECONDS);
+
+        assertThat(result).isEqualTo(WorkflowRunStatus.COMPLETED.name());
+
+        InOrder inOrder = inOrder(activities);
+        inOrder.verify(activities).runQualityAssurance(any());
+        inOrder.verify(activities).manageSourceControl(argThat(req -> "CREATE_DRAFT_PR".equals(req.action())));
+        inOrder.verify(activities).manageSourceControl(argThat(req -> "MERGE".equals(req.action())));
     }
 
     @Test
