@@ -36,15 +36,16 @@ class GitHubCliSourceControlPluginTest {
     @Test
     @DisplayName("create 호출은 지정된 base 브랜치로 gh pr create --draft 명령을 실행한다 (main 하드코딩 아님)")
     void createDraftPullRequest_buildsCommandWithGivenBaseBranch() {
-        executor.nextResult = "https://github.com/example/repo/pull/1\n";
+        executor.results.add("{}"); // durable check: gh pr view finds nothing yet
+        executor.results.add("https://github.com/example/repo/pull/1\n");
 
         PullRequestResult result = plugin.createDraftPullRequest(createCommand("key-1", "develop"));
 
         assertThat(result.url()).isEqualTo("https://github.com/example/repo/pull/1");
         assertThat(result.status()).isEqualTo("DRAFT");
-        assertThat(executedCommands).hasSize(1);
-        assertThat(executedCommands.get(0)).containsSubsequence("--base", "develop");
-        assertThat(String.join(" ", executedCommands.get(0))).doesNotContain("main");
+        assertThat(executedCommands).hasSize(2);
+        assertThat(executedCommands.get(1)).containsSubsequence("--base", "develop");
+        assertThat(String.join(" ", executedCommands.get(1))).doesNotContain("main");
     }
 
     @Test
@@ -61,13 +62,29 @@ class GitHubCliSourceControlPluginTest {
     @Test
     @DisplayName("같은 idempotencyKey로 반복 create 호출하면 명령을 재실행하지 않고 기존 결과를 반환한다")
     void createDraftPullRequest_repeatedCall_isIdempotent() {
-        executor.nextResult = "https://github.com/example/repo/pull/2\n";
+        executor.results.add("{}"); // durable check on first call only
+        executor.results.add("https://github.com/example/repo/pull/2\n");
 
         PullRequestResult first = plugin.createDraftPullRequest(createCommand("key-3", "main"));
         PullRequestResult second = plugin.createDraftPullRequest(createCommand("key-3", "main"));
 
         assertThat(second).isEqualTo(first);
-        assertThat(executedCommands).hasSize(1);
+        assertThat(executedCommands).hasSize(2); // view + create only once, second call is a pure cache hit
+    }
+
+    @Test
+    @DisplayName("in-memory 캐시가 없어도(예: Worker 재시작) 이미 GitHub에 PR이 있으면 재생성하지 않는다")
+    void createDraftPullRequest_prAlreadyExistsOnGitHub_returnsExistingWithoutCreating() {
+        // Simulates a fresh plugin instance after a Worker restart wiping the in-memory cache —
+        // durable idempotency must come from GitHub's own state (gh pr view), not just memory.
+        GitHubCliSourceControlPlugin freshPlugin = new GitHubCliSourceControlPlugin(executor);
+        executor.nextResult = "{\"url\":\"https://github.com/example/repo/pull/9\",\"state\":\"OPEN\"}";
+
+        PullRequestResult result = freshPlugin.createDraftPullRequest(createCommand("key-9", "main"));
+
+        assertThat(result.url()).isEqualTo("https://github.com/example/repo/pull/9");
+        assertThat(executedCommands).hasSize(1); // only the "view" check — no "create" command
+        assertThat(executedCommands.get(0)).contains("view");
     }
 
     @Test
@@ -109,6 +126,22 @@ class GitHubCliSourceControlPluginTest {
 
         assertThat(second).isEqualTo(first);
         assertThat(executedCommands).hasSize(2); // view + merge, 두 번째 merge 호출은 실행되지 않음
+    }
+
+    @Test
+    @DisplayName("in-memory 캐시가 없어도 GitHub상 이미 병합된 상태면 merge 명령을 재실행하지 않는다")
+    void mergePullRequest_alreadyMergedOnGitHub_returnsWithoutReMerging() {
+        // Simulates a fresh plugin instance after a Worker restart — durable check via
+        // gh pr view must detect an already-merged PR and avoid re-invoking `gh pr merge`.
+        GitHubCliSourceControlPlugin freshPlugin = new GitHubCliSourceControlPlugin(executor);
+        executor.nextResult = "{\"url\":\"https://github.com/example/repo/pull/10\",\"state\":\"MERGED\"}";
+
+        PullRequestResult result = freshPlugin.mergePullRequest(
+                new MergePullRequestCommand("key-10", "/workspace/run-10", "feature/run-10"));
+
+        assertThat(result.status()).isEqualTo("MERGED");
+        assertThat(executedCommands).hasSize(1); // only the "view" check — no "merge" command
+        assertThat(executedCommands).noneMatch(cmd -> List.of(cmd).contains("merge"));
     }
 
     @Test

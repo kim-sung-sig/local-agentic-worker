@@ -41,6 +41,15 @@ public class GitHubCliSourceControlPlugin implements SourceControlPlugin {
             return cached;
         }
 
+        // Durable idempotency check: the in-memory cache only survives this process's
+        // lifetime, but a Temporal Activity can be retried after a Worker restart wipes it.
+        // Consulting GitHub's own state via `gh pr view` catches that case too.
+        PullRequestResult existing = getPullRequest(command.workspacePath(), command.branchName());
+        if (existing != null) {
+            resultsByIdempotencyKey.put(command.idempotencyKey(), existing);
+            return existing;
+        }
+
         log.info("[SCM] Draft PR 생성: {} -> {}", command.branchName(), command.baseBranch());
         String output = commandExecutor.execute(command.workspacePath(),
                 "gh", "pr", "create", "--draft",
@@ -70,6 +79,12 @@ public class GitHubCliSourceControlPlugin implements SourceControlPlugin {
         if (existing == null) {
             throw new IllegalStateException(
                     "Cannot merge: no draft PR exists for branch " + command.branchName());
+        }
+        if ("MERGED".equals(existing.status())) {
+            // Durable idempotency: already merged per GitHub's own state (e.g. a retried
+            // Activity after a Worker restart) — avoid re-invoking `gh pr merge`.
+            resultsByIdempotencyKey.put(command.idempotencyKey(), existing);
+            return existing;
         }
 
         log.info("[SCM] PR 병합: {}", command.branchName());

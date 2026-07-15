@@ -259,8 +259,8 @@ class AgentWorkerWorkflowTest {
     }
 
     @Test
-    @DisplayName("시도가 소진되면 더 이상 자동 재시도하지 않고 게이트로 진행한다")
-    void qaLoop_exhaustsAttempts_stopsAutoRetryAndWaitsForGate() throws Exception {
+    @DisplayName("시도가 소진돼도 QA 기준 미달이면 승인으로 강제 진행할 수 없고 FAILED로 종료된다")
+    void qaLoop_exhaustsAttempts_terminatesAsFailedWithoutReachingReviewMerge() throws Exception {
         when(activities.runQualityAssurance(any()))
                 .thenReturn(new QaResult(false, 50, artifactRef("qa-report"), 1));
 
@@ -271,18 +271,14 @@ class AgentWorkerWorkflowTest {
         stub.approve();
         awaitStage(stub, WorkflowStage.PLANNING);
         stub.approve();
-        awaitStage(stub, WorkflowStage.QA);
-        // 시도 소진 후에는 사람이 게이트에서 결정 — approve는 미달 QA에도 강제 진행
-        stub.approve();
-        awaitStage(stub, WorkflowStage.REVIEW_MERGE);
-        stub.approve();
 
         String result = future.get(10, TimeUnit.SECONDS);
 
-        assertThat(result).isEqualTo(WorkflowRunStatus.COMPLETED.name());
+        assertThat(result).isEqualTo(WorkflowRunStatus.FAILED.name());
         verify(activities, times(2)).implement(any());
         verify(activities, times(2)).runQualityAssurance(any());
         verify(activities, times(2)).recordAttemptHistory(any());
+        verify(activities, never()).manageSourceControl(any());
     }
 
     @Test
@@ -312,6 +308,32 @@ class AgentWorkerWorkflowTest {
         inOrder.verify(activities).runQualityAssurance(any());
         inOrder.verify(activities).manageSourceControl(argThat(req -> "CREATE_DRAFT_PR".equals(req.action())));
         inOrder.verify(activities).manageSourceControl(argThat(req -> "MERGE".equals(req.action())));
+    }
+
+    @Test
+    @DisplayName("reject는 현재 단계보다 앞선(미도달) 단계를 targetStage로 지정할 수 없다")
+    void reject_withForwardTargetStage_isIgnored() throws Exception {
+        AgentWorkerWorkflow stub = newStub("reject-forward-run");
+        CompletableFuture<String> future = WorkflowClient.execute(stub::run, newRequest("reject-forward-run"));
+
+        awaitStage(stub, WorkflowStage.INTAKE);
+        // INTAKE에서 아직 도달하지 않은 REVIEW_MERGE로 반려 시도 — 도메인 규칙 위반이므로 무시돼야 한다
+        stub.reject("skip ahead", WorkflowStage.REVIEW_MERGE);
+        Thread.sleep(200);
+
+        assertThat(stub.currentStage()).isEqualTo(WorkflowStage.INTAKE);
+        assertThat(stub.status()).isEqualTo(WorkflowRunStatus.RUNNING);
+        verify(activities, never()).manageSourceControl(any());
+
+        stub.approve();
+        awaitStage(stub, WorkflowStage.PLANNING);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.QA);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.REVIEW_MERGE);
+        stub.approve();
+
+        assertThat(future.get(10, TimeUnit.SECONDS)).isEqualTo(WorkflowRunStatus.COMPLETED.name());
     }
 
     @Test

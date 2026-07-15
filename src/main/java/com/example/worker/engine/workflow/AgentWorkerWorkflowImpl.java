@@ -126,11 +126,21 @@ public class AgentWorkerWorkflowImpl implements AgentWorkerWorkflow {
             return;
         }
 
+        if (!thresholdMet) {
+            // Attempts exhausted without meeting the threshold. Spec Acceptance Criteria 5
+            // ("기준을 충족한 결과만 Draft PR을 만들 수 있고") permits no human override here —
+            // approving a failing result must never reach REVIEW_MERGE, so the gate is never
+            // offered; the run terminates as FAILED instead.
+            status = WorkflowRunStatus.FAILED;
+            currentStage = null;
+            return;
+        }
+
         if (awaitGate(WorkflowStage.QA)) {
             currentStage = WorkflowStage.REVIEW_MERGE;
         } else if (status == WorkflowRunStatus.RUNNING) {
-            // Attempts exhausted (or threshold already met) and a human explicitly rejected —
-            // this manual path from T04 remains available as a fallback beyond the auto-loop.
+            // Threshold was already met, but a human explicitly rejected a passing result
+            // (e.g. wants a different approach) — this manual path from T04 remains available.
             attemptNumber++;
         }
     }
@@ -211,6 +221,14 @@ public class AgentWorkerWorkflowImpl implements AgentWorkerWorkflow {
 
     @Override
     public void reject(String reason, WorkflowStage targetStage) {
+        // Domain rule: a rejection can only roll the run back to the current stage or an
+        // earlier one it has already passed through — never forward to a stage not yet
+        // reached (e.g. rejecting at INTAKE straight to REVIEW_MERGE would skip Workspace/QA
+        // entirely). Signal handlers must not throw (that would fail and retry the workflow
+        // task indefinitely on replay), so an invalid target is silently ignored instead.
+        if (targetStage == null || currentStage == null || targetStage.ordinal() > currentStage.ordinal()) {
+            return;
+        }
         this.lastDecision = GateDecision.REJECT;
         this.lastReason = reason;
         this.rejectionTarget = targetStage;
