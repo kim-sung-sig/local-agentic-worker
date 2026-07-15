@@ -45,6 +45,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @DisplayName("AgentWorkerWorkflow")
 class AgentWorkerWorkflowTest {
@@ -198,6 +199,87 @@ class AgentWorkerWorkflowTest {
         assertThat(result).isEqualTo(WorkflowRunStatus.COMPLETED.name());
         verify(activities, times(2)).implement(any());
         verify(activities, times(2)).runQualityAssurance(any());
+    }
+
+    @Test
+    @DisplayName("QA 점수가 threshold와 정확히 같으면 통과 처리되고 재시도하지 않는다")
+    void qaLoop_thresholdEquality_passesWithoutRetry() throws Exception {
+        when(activities.runQualityAssurance(any()))
+                .thenReturn(new QaResult(true, 90, artifactRef("qa-report"), 1));
+
+        AgentWorkerWorkflow stub = newStub("threshold-eq-run");
+        CompletableFuture<String> future = WorkflowClient.execute(stub::run, newRequest("threshold-eq-run"));
+
+        awaitStage(stub, WorkflowStage.INTAKE);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.PLANNING);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.QA);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.REVIEW_MERGE);
+        stub.approve();
+
+        String result = future.get(10, TimeUnit.SECONDS);
+
+        assertThat(result).isEqualTo(WorkflowRunStatus.COMPLETED.name());
+        verify(activities, times(1)).implement(any());
+        verify(activities, times(1)).runQualityAssurance(any());
+        verify(activities, times(1)).recordAttemptHistory(any());
+    }
+
+    @Test
+    @DisplayName("마지막 Attempt(2회째)에서 통과하면 게이트 없이 자동으로 한 번 재시도한 뒤 완료된다")
+    void qaLoop_passesOnLastAttempt_autoRetriesOnce() throws Exception {
+        when(activities.runQualityAssurance(any()))
+                .thenReturn(new QaResult(false, 50, artifactRef("qa-report-1"), 1))
+                .thenReturn(new QaResult(true, 95, artifactRef("qa-report-2"), 1));
+
+        AgentWorkerWorkflow stub = newStub("pass-last-run");
+        CompletableFuture<String> future = WorkflowClient.execute(stub::run, newRequest("pass-last-run"));
+
+        awaitStage(stub, WorkflowStage.INTAKE);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.PLANNING);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.QA);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.REVIEW_MERGE);
+        stub.approve();
+
+        String result = future.get(10, TimeUnit.SECONDS);
+
+        assertThat(result).isEqualTo(WorkflowRunStatus.COMPLETED.name());
+        verify(activities, times(1)).prepareWorkspace(any());
+        verify(activities, times(2)).implement(any());
+        verify(activities, times(2)).runQualityAssurance(any());
+        verify(activities, times(2)).recordAttemptHistory(any());
+    }
+
+    @Test
+    @DisplayName("시도가 소진되면 더 이상 자동 재시도하지 않고 게이트로 진행한다")
+    void qaLoop_exhaustsAttempts_stopsAutoRetryAndWaitsForGate() throws Exception {
+        when(activities.runQualityAssurance(any()))
+                .thenReturn(new QaResult(false, 50, artifactRef("qa-report"), 1));
+
+        AgentWorkerWorkflow stub = newStub("exhaustion-run");
+        CompletableFuture<String> future = WorkflowClient.execute(stub::run, newRequest("exhaustion-run"));
+
+        awaitStage(stub, WorkflowStage.INTAKE);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.PLANNING);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.QA);
+        // 시도 소진 후에는 사람이 게이트에서 결정 — approve는 미달 QA에도 강제 진행
+        stub.approve();
+        awaitStage(stub, WorkflowStage.REVIEW_MERGE);
+        stub.approve();
+
+        String result = future.get(10, TimeUnit.SECONDS);
+
+        assertThat(result).isEqualTo(WorkflowRunStatus.COMPLETED.name());
+        verify(activities, times(2)).implement(any());
+        verify(activities, times(2)).runQualityAssurance(any());
+        verify(activities, times(2)).recordAttemptHistory(any());
     }
 
     @Test

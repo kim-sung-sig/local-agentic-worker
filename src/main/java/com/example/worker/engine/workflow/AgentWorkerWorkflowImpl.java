@@ -2,6 +2,7 @@ package com.example.worker.engine.workflow;
 
 import com.example.worker.engine.application.contract.v1.ActivityRequestMetadata;
 import com.example.worker.engine.application.contract.v1.AttemptHistoryRequest;
+import com.example.worker.engine.application.contract.v1.AttemptPolicy;
 import com.example.worker.engine.application.contract.v1.ImplementationRequest;
 import com.example.worker.engine.application.contract.v1.ImplementationResponse;
 import com.example.worker.engine.application.contract.v1.PlanningRequest;
@@ -15,6 +16,7 @@ import com.example.worker.engine.application.contract.v1.TicketAssessmentRespons
 import com.example.worker.engine.application.contract.v1.WorkspaceRef;
 import com.example.worker.engine.application.contract.v1.WorkspaceRequest;
 import com.example.worker.engine.application.contract.v1.WorkspaceResponse;
+import com.example.worker.engine.application.service.AttemptPolicyResolver;
 import com.example.worker.engine.domain.model.GateDecision;
 import com.example.worker.engine.domain.model.StageGate;
 import com.example.worker.engine.domain.model.WorkflowRunStatus;
@@ -36,6 +38,7 @@ public class AgentWorkerWorkflowImpl implements AgentWorkerWorkflow {
                     .build());
 
     private final List<StageGate> gateHistory = new ArrayList<>();
+    private final AttemptPolicyResolver attemptPolicyResolver = new AttemptPolicyResolver();
 
     private WorkflowStage currentStage = WorkflowStage.INTAKE;
     private WorkflowRunStatus status = WorkflowRunStatus.RUNNING;
@@ -51,6 +54,7 @@ public class AgentWorkerWorkflowImpl implements AgentWorkerWorkflow {
     private PlanningResponse planning;
     private WorkspaceResponse workspace;
     private ImplementationResponse implementation;
+    private AttemptPolicy attemptPolicy;
     private int attemptNumber = 1;
 
     @Override
@@ -100,6 +104,10 @@ public class AgentWorkerWorkflowImpl implements AgentWorkerWorkflow {
     }
 
     private void handleQa(StartAgentWorkflowRequest request) {
+        if (attemptPolicy == null) {
+            attemptPolicy = attemptPolicyResolver.resolve(planning.attemptPolicy());
+        }
+
         QaResult qaResult = activities.runQualityAssurance(new QaRequest(
                 metadata(request, WorkflowStage.QA), workspace.workspaceRef(),
                 implementation.implementationArtifactRef(), 1));
@@ -108,9 +116,21 @@ public class AgentWorkerWorkflowImpl implements AgentWorkerWorkflow {
                 metadata(request, WorkflowStage.QA), implementation.implementationArtifactRef(),
                 qaResult.reportRef(), qaResult.score(), qaResult.passed() ? "PASSED" : "FAILED", 1));
 
+        boolean thresholdMet = qaResult.score() >= attemptPolicy.minimumQaScore();
+        boolean attemptsRemain = attemptNumber < attemptPolicy.maxAttempts();
+
+        if (!thresholdMet && attemptsRemain) {
+            // Policy-driven auto-retry — no human gate involved while attempts remain.
+            attemptNumber++;
+            currentStage = WorkflowStage.IMPLEMENTATION;
+            return;
+        }
+
         if (awaitGate(WorkflowStage.QA)) {
             currentStage = WorkflowStage.REVIEW_MERGE;
         } else if (status == WorkflowRunStatus.RUNNING) {
+            // Attempts exhausted (or threshold already met) and a human explicitly rejected —
+            // this manual path from T04 remains available as a fallback beyond the auto-loop.
             attemptNumber++;
         }
     }
