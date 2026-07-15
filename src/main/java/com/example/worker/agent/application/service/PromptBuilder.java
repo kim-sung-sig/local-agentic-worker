@@ -192,10 +192,20 @@ public final class PromptBuilder {
      * 브랜치명과 동일한 규칙 적용 (feat/ 접두사 제외).
      */
     public static String toFeatureSlug(int issueNumber, String title) {
+        if (title == null || title.isBlank()) {
+            return "issue-%d".formatted(issueNumber);
+        }
+
         String slug = title.toLowerCase()
                 .replaceAll("[^a-z0-9\\s-]", "")
                 .trim()
-                .replaceAll("\\s+", "-");
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+$", "");  // 끝의 하이픈 제거
+
+        if (slug.isBlank()) {
+            return "issue-%d".formatted(issueNumber);
+        }
+
         if (slug.length() > 40) {
             slug = slug.substring(0, 40);
         }

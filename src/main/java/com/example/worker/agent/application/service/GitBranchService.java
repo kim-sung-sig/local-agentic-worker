@@ -18,4 +18,13 @@ public class GitBranchService {
         ProcessRunner.run(localPath, 30, TimeUnit.SECONDS, "git", "checkout", "-b", branchName);
         log.info("[Git] 브랜치 생성 완료: {}", branchName);
     }
+
+    public void deleteBranch(String localPath, String branchName, boolean force) {
+        log.info("[Git] 브랜치 삭제: {} (force: {})", branchName, force);
+        String[] cmd = force
+                ? new String[]{"git", "branch", "-D", branchName}
+                : new String[]{"git", "branch", "-d", branchName};
+        ProcessRunner.run(localPath, 30, TimeUnit.SECONDS, cmd);
+        log.info("[Git] 브랜치 삭제 완료: {}", branchName);
+    }
 }
