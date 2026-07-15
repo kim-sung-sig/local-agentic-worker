@@ -1,5 +1,6 @@
 package com.example.worker.engine.infrastructure.temporal;
 
+import com.example.worker.engine.workflow.AgentWorkerWorkflowImpl;
 import com.example.worker.engine.workflow.EngineHealthWorkflowImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.worker.Worker;
@@ -19,7 +20,7 @@ public class TemporalConfiguration {
     public WorkerFactory engineWorkerFactory(WorkflowClient workflowClient) {
         WorkerFactory workerFactory = WorkerFactory.newInstance(workflowClient);
         Worker worker = workerFactory.newWorker(taskQueue);
-        worker.registerWorkflowImplementationTypes(EngineHealthWorkflowImpl.class);
+        worker.registerWorkflowImplementationTypes(EngineHealthWorkflowImpl.class, AgentWorkerWorkflowImpl.class);
         return workerFactory;
     }
 
