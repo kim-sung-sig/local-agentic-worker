@@ -39,9 +39,10 @@ public class GlobalExceptionHandler {
 
     private HttpStatus resolveStatus(ErrorCode errorCode) {
         return switch (errorCode) {
-            case PROJECT_NOT_FOUND, ISSUE_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case PROJECT_NOT_FOUND, ISSUE_NOT_FOUND, WORKFLOW_RUN_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case PROJECT_PATH_DUPLICATED -> HttpStatus.CONFLICT;
-            case PROJECT_PATH_INVALID, ISSUE_STATUS_TRANSITION_INVALID -> HttpStatus.BAD_REQUEST;
+            case PROJECT_PATH_INVALID, ISSUE_STATUS_TRANSITION_INVALID, INVALID_STAGE_DECISION ->
+                    HttpStatus.BAD_REQUEST;
         };
     }
 }

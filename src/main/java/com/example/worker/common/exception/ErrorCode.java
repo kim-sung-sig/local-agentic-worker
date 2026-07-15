@@ -12,7 +12,10 @@ public enum ErrorCode {
     PROJECT_PATH_INVALID("PROJECT_PATH_INVALID", "유효하지 않은 디렉토리 경로입니다."),
 
     ISSUE_NOT_FOUND("ISSUE_NOT_FOUND", "이슈를 찾을 수 없습니다."),
-    ISSUE_STATUS_TRANSITION_INVALID("ISSUE_STATUS_TRANSITION_INVALID", "허용되지 않는 상태 전이입니다.");
+    ISSUE_STATUS_TRANSITION_INVALID("ISSUE_STATUS_TRANSITION_INVALID", "허용되지 않는 상태 전이입니다."),
+
+    WORKFLOW_RUN_NOT_FOUND("WORKFLOW_RUN_NOT_FOUND", "Workflow Run을 찾을 수 없습니다."),
+    INVALID_STAGE_DECISION("INVALID_STAGE_DECISION", "유효하지 않은 단계 결정입니다.");
 
     private final String code;
     private final String message;

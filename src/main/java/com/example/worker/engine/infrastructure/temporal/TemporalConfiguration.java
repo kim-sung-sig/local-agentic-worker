@@ -1,7 +1,12 @@
 package com.example.worker.engine.infrastructure.temporal;
 
+import com.example.worker.engine.infrastructure.activity.EngineActivitiesImpl;
 import com.example.worker.engine.workflow.AgentWorkerWorkflowImpl;
 import com.example.worker.engine.workflow.EngineHealthWorkflowImpl;
+import com.example.worker.runtime.application.WorkspaceRuntime;
+import com.example.worker.runtime.infrastructure.git.GitWorktreeRuntime;
+import com.example.worker.scm.application.SourceControlPlugin;
+import com.example.worker.scm.infrastructure.github.GitHubCliSourceControlPlugin;
 import io.temporal.client.WorkflowClient;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
@@ -17,10 +22,23 @@ public class TemporalConfiguration {
     private String taskQueue;
 
     @Bean
-    public WorkerFactory engineWorkerFactory(WorkflowClient workflowClient) {
+    public WorkspaceRuntime workspaceRuntime(
+            @Value("${agent.engine.runtime.source-repo}") String sourceRepo,
+            @Value("${agent.engine.runtime.workspace-root}") String workspaceRoot) {
+        return new GitWorktreeRuntime(sourceRepo, workspaceRoot);
+    }
+
+    @Bean
+    public SourceControlPlugin sourceControlPlugin() {
+        return new GitHubCliSourceControlPlugin();
+    }
+
+    @Bean
+    public WorkerFactory engineWorkerFactory(WorkflowClient workflowClient, EngineActivitiesImpl engineActivities) {
         WorkerFactory workerFactory = WorkerFactory.newInstance(workflowClient);
         Worker worker = workerFactory.newWorker(taskQueue);
         worker.registerWorkflowImplementationTypes(EngineHealthWorkflowImpl.class, AgentWorkerWorkflowImpl.class);
+        worker.registerActivitiesImplementations(engineActivities);
         return workerFactory;
     }
 
