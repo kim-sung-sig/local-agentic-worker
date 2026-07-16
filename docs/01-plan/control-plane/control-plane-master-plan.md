@@ -6,7 +6,7 @@
 
 **Architecture:** `project` and `issue` remain the Control Plane core. Their ports are defined in the application layer and implemented by JPA adapters. Agent and external-sync adapters are outside this plan; the legacy local-path `agent` route is not used by new registrations.
 
-**Tech Stack:** Java 21, Spring Boot 3.5, Gradle, PostgreSQL/Flyway, Spring Data JPA, Kafka, JUnit 5, Mockito.
+**Tech Stack:** Java 21, Spring Boot 3.5, Gradle, PostgreSQL/Flyway, Spring Data JPA, JUnit 5, Mockito.
 
 ---
 
@@ -46,12 +46,12 @@ sequenceDiagram
 | CP-02 | [Remote Project persistence](CP-02-remote-project-persistence.plan.md) | Persist and retrieve remote Project fields safely | `feat: persist remote git project` |
 | CP-03 | [Project registration API](CP-03-project-registration-api.plan.md) | Expose remote Project registration through the Control Plane API | `feat: register remote git project` |
 | CP-04 | [Issue core boundary](CP-04-issue-work-request.plan.md) | Register and manage Issues without Agent/Sync dependencies | `feat: isolate issue core` |
-| CP-05 | [Control Plane verification](CP-05-control-plane-verification.plan.md) | Establish an executable happy-path verification gate | `test: verify control plane work request flow` |
+| CP-05 | [Control Plane verification](CP-05-control-plane-verification.plan.md) | Establish an executable core use-case verification gate | `test: verify control plane core use cases` |
 
 ## Cross-plan invariants
 
 - A repository URI is remote (`https`, `http`, or `ssh`) and never a filesystem URI.
-- `credentialRef` identifies a secret managed elsewhere; it never contains a token/password and is never emitted in `WorkRequested`.
+- `credentialRef` identifies a secret managed elsewhere; it never contains a token/password and is never emitted in a Project API response.
 - New Project creation does not require a local checkout.
 - No Control Plane Project/Issue class imports Temporal SDK types, Agent Runtime classes, or Kafka publisher ports.
 
