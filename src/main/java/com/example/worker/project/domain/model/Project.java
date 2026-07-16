@@ -54,4 +54,17 @@ public class Project {
         return new Project(id, name, new LocalPath(localPath), null, BranchName.of(baseBranch), null, createdAt);
     }
 
+    public static Project reconstituteRemote(ProjectId id, RemoteProjectRegistration registration,
+                                              LocalDateTime createdAt) {
+        return new Project(
+                id,
+                registration.name(),
+                null,
+                registration.repositoryUri(),
+                registration.baseBranch(),
+                registration.credentialRef(),
+                createdAt
+        );
+    }
+
 }

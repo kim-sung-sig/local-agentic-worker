@@ -12,7 +12,7 @@
 
 ## Acceptance criteria
 
-- Migration adds nullable `repository_uri` and `credential_ref`; it does not alter/delete `local_path` in this compatibility phase.
+- Migration adds nullable `repository_uri` and `credential_ref`, and changes `local_path` to nullable while preserving existing values and its uniqueness constraint.
 - New remote Projects round-trip repository URI, base branch, and credential reference through the repository port.
 - Duplicate remote repository registration is detected by the repository URI, independently of legacy local paths.
 
@@ -20,7 +20,7 @@
 
 - [ ] Add an adapter unit test with a mocked JPA repository: saving a remote Project maps `repositoryUri` and `credentialRef` to the entity.
 - [ ] Run its focused Gradle test; expect failure before entity/adapter changes.
-- [ ] Add the Flyway migration with `repository_uri VARCHAR(500)` and `credential_ref VARCHAR(200)` as nullable compatibility columns.
+- [ ] Add the Flyway migration with nullable `repository_uri VARCHAR(500)` and `credential_ref VARCHAR(200)`, then drop only the `NOT NULL` requirement from `local_path`.
 - [ ] Add entity fields and repository lookup `existsByRepositoryUri`.
 - [ ] Map remote and legacy Project representations in the adapter; legacy rows must still reconstitute.
 - [ ] Add and implement the matching repository-port method.

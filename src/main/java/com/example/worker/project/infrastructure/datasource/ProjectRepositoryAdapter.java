@@ -3,6 +3,7 @@ package com.example.worker.project.infrastructure.datasource;
 import com.example.worker.project.application.port.ProjectRepository;
 import com.example.worker.project.domain.model.Project;
 import com.example.worker.project.domain.model.ProjectId;
+import com.example.worker.project.domain.model.RepositoryUri;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -30,6 +31,11 @@ public class ProjectRepositoryAdapter implements ProjectRepository {
     @Override
     public boolean existsByLocalPath(String localPath) {
         return jpaRepository.existsByLocalPath(localPath);
+    }
+
+    @Override
+    public boolean existsByRepositoryUri(RepositoryUri repositoryUri) {
+        return jpaRepository.existsByRepositoryUri(repositoryUri.value());
     }
 
     @Override
