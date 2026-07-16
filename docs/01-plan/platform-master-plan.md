@@ -44,7 +44,7 @@ flowchart TD
 
 ### Stage 1 — Control Plane core
 
-Remote Git Project registration, direct Issue registration, and reliable `WorkRequested` delivery. This is the current detailed planning target.
+Remote Git Project registration and direct Issue registration. Agent Engine work requests and external ticket synchronization are excluded from this core target.
 
 ### Stage 2 — Physical application boundaries
 
