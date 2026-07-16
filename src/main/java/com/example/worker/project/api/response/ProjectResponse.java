@@ -9,7 +9,7 @@ import java.util.UUID;
 public record ProjectResponse(
         UUID id,
         String name,
-        String localPath,
+        String repositoryUri,
         String baseBranch,
         LocalDateTime createdAt
 ) {
@@ -17,7 +17,7 @@ public record ProjectResponse(
         return new ProjectResponse(
                 summary.id(),
                 summary.name(),
-                summary.localPath(),
+                summary.repositoryUri(),
                 summary.baseBranch(),
                 summary.createdAt()
         );
@@ -27,7 +27,7 @@ public record ProjectResponse(
         return new ProjectResponse(
                 detail.id(),
                 detail.name(),
-                detail.localPath(),
+                detail.repositoryUri(),
                 detail.baseBranch(),
                 detail.createdAt()
         );

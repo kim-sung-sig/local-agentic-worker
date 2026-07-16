@@ -27,7 +27,7 @@ public class ProjectController {
 
     @PostMapping
     public ResponseEntity<Void> registerProject(@Valid @RequestBody CreateProjectRequest request) {
-        ProjectId id = commandService.registerProject(request.name(), request.localPath(), request.baseBranch());
+        ProjectId id = commandService.registerProject(request.toCommand());
         return ResponseEntity.created(URI.create("/api/projects/" + id.value())).build();
     }
 
