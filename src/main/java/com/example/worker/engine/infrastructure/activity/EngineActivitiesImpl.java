@@ -23,7 +23,6 @@ import com.example.worker.engine.application.port.WorkflowRunRepository;
 import com.example.worker.engine.domain.model.AttemptRecord;
 import com.example.worker.engine.domain.model.AttemptStatus;
 import com.example.worker.engine.domain.model.WorkflowRun;
-import com.example.worker.engine.domain.model.WorkflowRunId;
 import com.example.worker.engine.workflow.EngineActivities;
 import com.example.worker.runtime.application.WorkspaceRuntime;
 import com.example.worker.scm.application.SourceControlPlugin;
@@ -67,7 +66,19 @@ public class EngineActivitiesImpl implements EngineActivities {
     @Override
     public TicketAssessmentResponse assessTicket(TicketAssessmentRequest request) {
         log.info("[Activity] assessTicket workflowRunId={}", request.metadata().workflowRunId());
+        ensureWorkflowRunExists(request.metadata().workflowRunId());
         return new TicketAssessmentResponse(request.rawSpecification(), "FEATURE", 1);
+    }
+
+    // P1-3: persist the WorkflowRun row from INTAKE (the first Activity of every run) rather than
+    // lazily at the first QA attempt, so a run that fails/cancels before reaching QA still leaves
+    // a durable record. Looked up by temporalWorkflowId (the external correlation key), not by
+    // WorkflowRunId (the aggregate's own surrogate key, assigned fresh by WorkflowRun.create) —
+    // skipped when a row already exists (e.g. Activity retry after a task failure).
+    private void ensureWorkflowRunExists(String workflowRunId) {
+        if (workflowRunRepository.findByTemporalWorkflowId(workflowRunId).isEmpty()) {
+            workflowRunRepository.save(WorkflowRun.create(UUID.fromString(workflowRunId), workflowRunId));
+        }
     }
 
     @Override
@@ -101,8 +112,7 @@ public class EngineActivitiesImpl implements EngineActivities {
     @Override
     public AttemptHistoryResponse recordAttemptHistory(AttemptHistoryRequest request) {
         String workflowRunId = request.metadata().workflowRunId();
-        WorkflowRunId id = WorkflowRunId.of(UUID.fromString(workflowRunId));
-        WorkflowRun run = workflowRunRepository.findById(id)
+        WorkflowRun run = workflowRunRepository.findByTemporalWorkflowId(workflowRunId)
                 .orElseGet(() -> WorkflowRun.create(UUID.fromString(workflowRunId), workflowRunId));
 
         Instant now = Instant.now();
