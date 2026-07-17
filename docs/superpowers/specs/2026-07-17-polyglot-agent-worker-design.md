@@ -44,7 +44,17 @@ flowchart LR
 
 One execution is submitted with an idempotency key (`workflowRunId + stage + attempt`). The Worker returns `202 Accepted` with an execution ID, persists ordered events and artifact references, and exposes status/cancel/event reads. A Temporal Activity polls the execution with heartbeats. A retry therefore observes the same execution ID rather than starting a second agent process.
 
+The Worker execution ledger and ordered event cursor are durable Worker-owned state; an in-memory event store is not sufficient because a Worker restart must preserve idempotency and status reads.
+
 The Engine must not share a Temporal Activity task queue directly with multiple language implementations. HTTP makes the language boundary explicit and avoids cross-SDK payload and activity-name compatibility problems.
+
+### 3.1 Contract migration
+
+The current `engine.application.contract.v1` and `EngineActivities` remain the internal Java/Temporal workflow contract during migration. Their existing `WorkspaceRef` is intended to be opaque, but the reference implementation currently passes a literal local path to local workspace and source-control code. That v1 path coupling is **not** exported to an Agent Worker.
+
+The new HTTP schema is `agent-worker/v1`, not a reinterpretation of the existing Java records. An Engine-side adapter maps only the four AI stages (`ASSESSMENT`, `PLANNING`, `IMPLEMENTATION`, `QA`) to the Worker API. `prepareWorkspace`, source control, and notifications remain on the existing Engine path until their own remote-Worker migrations are complete. No external Worker is allowed to poll the existing `EngineActivities` Task Queue.
+
+Before the first remote execution, Control Plane supplies a non-secret `ProjectExecutionSnapshot`: project ID, repository URI, base branch, credential reference, and requested source commit. The Worker resolves the credential reference locally; the credential value never crosses the HTTP contract. This replaces the reference implementation's hard-coded `main` branch and synthetic artifact references.
 
 ## 4. Provider and transport matrix
 
@@ -61,7 +71,9 @@ The Engine must not share a Temporal Activity task queue directly with multiple 
 | `codex-sdk-typescript` | Codex | SDK | TypeScript | assessment, planning, implementation, QA |
 | `claude-sdk-typescript` | Claude | SDK | TypeScript | assessment, planning, implementation, QA |
 
-All ten implementations conform to one contract. They are not implemented by copy-pasting an entire Worker service ten times: each language has one Worker host, one CLI adapter, and (where supported) one SDK adapter. Provider-specific command/SDK options remain inside the adapter.
+All ten implementations conform to one contract. They are not implemented by copy-pasting an entire Worker service ten times: each language has one Worker host, shared CLI/SDK transport layers, and provider adapters. Provider-specific command/SDK options remain inside the adapter.
+
+Each Worker host has two provider adapters (`codex`, `claude`) for a given transport.
 
 `providerId + transportId + runtimeId` is selected by explicit configuration. There is no dynamic plugin discovery, classpath scanning, or marketplace in this scope.
 
@@ -95,6 +107,8 @@ At execution start the Worker records a manifest containing content hashes and r
 - `CLAUDE.md`, `.claude/settings.json`, skills, agents, and hooks;
 - project-local `.agents/` shared instructions.
 
+Only regular files below the resolved repository root are included. The snapshotter rejects symbolic links, path escapes, oversized files, and paths outside an explicit allowlist. It never evaluates a hook while snapshotting. Registered repositories are trusted inputs; untrusted repository onboarding requires a separate security design.
+
 It creates generated documents under `.agentic/context/` in the clone/worktree:
 
 - `run.md` — immutable run ID, repository commit, stage, selected adapter;
@@ -104,7 +118,7 @@ It creates generated documents under `.agentic/context/` in the clone/worktree:
 - `feedback.md` — gate rejection or revision feedback;
 - `manifest.json` — harness hash list and artifact references.
 
-The adapter receives only a short stage prompt that directs it to these files. This avoids repeatedly injecting a huge prompt and makes provider changes safe. A provider session/thread ID can optimize continuation, but correctness must not depend on it: a new provider or a resumed Worker reconstructs context from the snapshot and artifacts.
+Generated context files never use `AGENTS.md`, `CLAUDE.md`, or another instruction-discovery filename. The Worker writes them under `.agentic/context/`, adds that path to the worktree's Git exclusion, and rejects a final source commit containing generated runtime context. The adapter receives only a short stage prompt that directs it to these files. This avoids repeatedly injecting a huge prompt and makes provider changes safe. A provider session/thread ID can optimize continuation, but correctness must not depend on it: a new provider or a resumed Worker reconstructs context from the snapshot and artifacts.
 
 ## 6. Common Worker HTTP contract
 
@@ -118,7 +132,7 @@ The later `contracts` module defines JSON schemas, not Java classes. Proposed re
 | `POST` | `/v1/executions/{executionId}:cancel` | Request cancellation. |
 | `GET` | `/v1/capabilities` | Report supported provider/transport/runtime/stage combinations. |
 
-The submission contains `contractVersion`, execution ID/idempotency key, workflow run ID, stage, attempt number, adapter ID, repository reference, read/write mode, context manifest reference, workspace reference when present, and artifact references. It never contains an API key, access token, local absolute path, or raw secret.
+The submission contains `contractVersion`, execution ID/idempotency key, workflow run ID, stage, attempt number, adapter ID, `ProjectExecutionSnapshot`, read/write mode, context manifest reference, opaque workspace reference when present, and artifact references. It never contains an API key, access token, local absolute path, or raw secret.
 
 Terminal results contain only normalized data: status, artifact references, QA score/report reference when applicable, changed-files summary, optional opaque provider session reference, and retryable/non-retryable error code.
 
@@ -147,19 +161,28 @@ SDK use has no separate token price. It still consumes the quota or API usage of
 
 ## 9. Delivery slices
 
-1. Define the versioned Worker HTTP schemas and Java Engine client port; add contract tests.
-2. Build the common TypeScript Worker host: execution persistence, clone/read checkout, harness manifest, artifact/event model, cancellation.
-3. Add `codex-cli-typescript` and `claude-cli-typescript`; prove read/write sandbox modes using fake executables.
-4. Add `codex-sdk-typescript` and `claude-sdk-typescript`; prove thread/session event mapping with SDK test doubles.
-5. Build the Python Worker host against the same schemas; reuse contract fixtures.
+1. Define `agent-worker/v1` JSON schemas, `ProjectExecutionSnapshot`, and the Java Engine client port. Document the v1 Java-Activity-to-HTTP migration; add schema and forbidden-field contract tests.
+2. Build the common TypeScript Worker host: durable execution ledger, clone/read checkout, safe harness manifest, artifact/event model, cancellation, and restart/idempotency tests.
+3. Add `codex-cli-typescript` and `claude-cli-typescript`; prove read/write sandbox modes using fake executables and the common adapter conformance suite.
+4. Add `codex-sdk-typescript` and `claude-sdk-typescript`; prove thread/session event mapping with SDK test doubles and the same conformance suite.
+5. Build the Python Worker host against the same schemas; reuse the conformance fixtures without changing JSON shape.
 6. Add four Python adapters: Codex CLI/SDK and Claude CLI/SDK.
 7. Add a thin Java CLI Worker host and its two adapters; reuse the same conformance suite.
-8. Replace `EngineActivitiesImpl` AI stubs one stage at a time through the Java Worker client, beginning with assessment then planning, implementation, and QA.
+8. Replace `EngineActivitiesImpl` AI stubs one stage at a time through the Java Worker client, beginning with assessment then planning, implementation, and QA. Keep local workspace/SCM Activities until their explicit migration tasks.
 9. Run a container-backed end-to-end flow: remote project → assessment gate → plan gate → one worktree → implementation/QA loop → review/merge gate.
 
 Each slice has one responsibility, one commit, focused contract/integration tests, code-quality check, and review. The ten adapters are not allowed to change Engine Workflow code.
 
-## 10. Out of scope
+## 10. Verification criteria
+
+- Every adapter passes the same provider-neutral conformance suite: request validation, idempotent duplicate submission, ordered resumable events, cancellation, terminal result normalization, and secret/path exclusion.
+- A Worker restart during a running execution preserves execution ID, event cursor, and terminal result without launching a duplicate provider process.
+- Harness snapshot tests reject a symlink, a path escape, an oversized file, and an attempted generated-context commit.
+- Read-stage tests prove no source-file modification; implementation/QA tests prove one approved worktree is reused.
+- Engine contract tests prove that no provider SDK type, local absolute path, or secret field crosses the Java HTTP client boundary.
+- Each of the ten adapters has a fake-runtime test. Real provider smoke tests are opt-in and run only in isolated environments with explicit credentials.
+
+## 11. Out of scope
 
 - Direct model API agent loops;
 - remote TUI/PTTY control;
