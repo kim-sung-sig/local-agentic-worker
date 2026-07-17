@@ -7,6 +7,8 @@ description: "백엔드 구현, 화면 구현, 코드 탐색, 백엔드 리뷰, 
 
 **실행 모드:** 에이전트 팀. 호출하는 모든 역할은 `model: opus`를 사용한다.
 
+호출 전 `.agents/agent-team.md`를 읽어 Claude와 공유하는 역할·권한·협업 기준을 적용한다.
+
 ## 역할
 
 - `code-explorer`: 읽기 전용 영향 범위 탐색

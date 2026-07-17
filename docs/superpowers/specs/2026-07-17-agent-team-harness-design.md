@@ -4,7 +4,9 @@
 
 Configure a reusable agent team for this repository: exploration, backend and frontend implementation, independent backend and frontend review, and orchestration.
 
-## Roles
+## Shared contract and roles
+
+`.agents/agent-team.md` is the shared role contract. The same roles are available in both `.claude/agents/` and `.codex/agents/` because each tool loads its own directory.
 
 | Agent | Access | Responsibility |
 |---|---|---|
@@ -24,7 +26,7 @@ Configure a reusable agent team for this repository: exploration, backend and fr
 
 ## Boundaries
 
-- The team uses role definitions in `.Codex/agents/` and one reusable orchestrator skill in `.Codex/skills/agent-team-orchestrator/`.
+- The team uses tool-local role definitions in `.claude/agents/` and `.codex/agents/`, one shared contract in `.agents/agent-team.md`, and matching tool-local orchestrator skills.
 - No dedicated skill is added for every role: project conventions and existing skills already provide the execution guidance.
 - Existing working-tree changes are preserved. The harness never commits, pushes, changes project configuration, or deletes files.
 
