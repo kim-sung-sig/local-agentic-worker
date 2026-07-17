@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.io.TempDir;
+import jakarta.persistence.EntityManager;
 
 import java.nio.file.Path;
 
@@ -27,6 +28,9 @@ class ProjectRepositoryAdapterTest {
     @Mock
     ProjectJpaRepository jpaRepository;
 
+    @Mock
+    EntityManager entityManager;
+
     ProjectRepositoryAdapter adapter;
 
     @TempDir
@@ -34,7 +38,7 @@ class ProjectRepositoryAdapterTest {
 
     @BeforeEach
     void setUp() {
-        adapter = new ProjectRepositoryAdapter(jpaRepository);
+        adapter = new ProjectRepositoryAdapter(jpaRepository, entityManager);
     }
 
     @Nested

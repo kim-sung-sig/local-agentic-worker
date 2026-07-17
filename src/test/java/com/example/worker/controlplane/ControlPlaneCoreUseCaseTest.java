@@ -82,6 +82,11 @@ class ControlPlaneCoreUseCaseTest {
         }
 
         @Override
+        public Optional<Project> findByIdForUpdate(ProjectId id) {
+            return findById(id);
+        }
+
+        @Override
         public boolean existsByLocalPath(String localPath) {
             return projects.values().stream()
                     .anyMatch(project -> project.getLocalPath() != null

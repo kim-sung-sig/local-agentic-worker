@@ -61,7 +61,7 @@ class IssueCommandServiceTest {
                     BranchName.of("main"), null));
             CreateIssueCommand command = new CreateIssueCommand(
                     project.getId().value(), "상품 검색 추가", "검색 API를 추가한다", Priority.HIGH);
-            when(projectRepository.findById(any())).thenReturn(Optional.of(project));
+            when(projectRepository.findByIdForUpdate(any())).thenReturn(Optional.of(project));
             when(issueRepository.findMaxIssueNumber(project.getId())).thenReturn(3);
             when(issueRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -81,7 +81,7 @@ class IssueCommandServiceTest {
             // Given
             CreateIssueCommand command = new CreateIssueCommand(
                     UUID.randomUUID(), "상품 검색 추가", "검색 API를 추가한다", Priority.HIGH);
-            when(projectRepository.findById(any())).thenReturn(Optional.empty());
+            when(projectRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> service.createIssue(command))

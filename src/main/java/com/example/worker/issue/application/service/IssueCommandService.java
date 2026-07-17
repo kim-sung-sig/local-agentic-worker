@@ -36,7 +36,7 @@ public class IssueCommandService {
     public IssueId createIssue(CreateIssueCommand command) {
         log.info(">>> [Issue 생성] projectId={}", command.projectId());
 
-        Project project = projectRepository.findById(ProjectId.of(command.projectId()))
+        Project project = projectRepository.findByIdForUpdate(ProjectId.of(command.projectId()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         int nextNumber = issueRepository.findMaxIssueNumber(project.getId()) + 1;

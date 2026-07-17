@@ -13,6 +13,8 @@ public interface ProjectRepository {
 
     Optional<Project> findById(ProjectId id);
 
+    Optional<Project> findByIdForUpdate(ProjectId id);
+
     boolean existsByLocalPath(String localPath);
 
     boolean existsByRepositoryUri(RepositoryUri repositoryUri);
