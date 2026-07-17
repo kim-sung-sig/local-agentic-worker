@@ -16,11 +16,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
 
@@ -31,8 +33,13 @@ import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(classes = ControlPlanePersistenceIntegrationTest.PersistenceConfig.class)
+@AutoConfigureMockMvc
 @DisplayName("Control Plane PostgreSQL 통합")
 class ControlPlanePersistenceIntegrationTest {
 
@@ -70,6 +77,30 @@ class ControlPlanePersistenceIntegrationTest {
 
     @Autowired
     private IssueQueryService issueQueryService;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    @DisplayName("프로젝트 API는 PostgreSQL에 원격 프로젝트를 저장하고 조회한다")
+    void projectApi_persistsAndListsRemoteProject() throws Exception {
+        mockMvc.perform(post("/api/projects")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "name": "checkout",
+                                  "repositoryUri": "https://github.com/acme/checkout.git",
+                                  "baseBranch": "main",
+                                  "credentialRef": "github-app/checkout"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/projects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("checkout"))
+                .andExpect(jsonPath("$[0].repositoryUri").value("https://github.com/acme/checkout.git"));
+    }
 
     @Test
     @DisplayName("원격 URI 유니크 제약과 Project별 동시 Issue 번호 할당을 보장한다")
@@ -111,6 +142,8 @@ class ControlPlanePersistenceIntegrationTest {
     @ComponentScan(basePackages = {
             "com.example.worker.project.application.service",
             "com.example.worker.issue.application.service",
+            "com.example.worker.project.api.controller",
+            "com.example.worker.common.exception",
             "com.example.worker.project.infrastructure.datasource",
             "com.example.worker.issue.infrastructure.datasource"
     })

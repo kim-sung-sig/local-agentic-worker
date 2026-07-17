@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/projects")
+@RequestMapping({"/api/projects", "/api/project"})
 public class ProjectController {
 
     private final ProjectCommandService commandService;
