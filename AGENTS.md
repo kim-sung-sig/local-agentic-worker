@@ -94,3 +94,17 @@ All commands are in [`.Codex/commands/`](.Codex/commands/) (V2.0 — skill당 1 
 ```
 
 **Utilities**: `/explain`, `/patch`, `/refactor`, `/perf`, `/security`, `/docs`, `/jpa`
+
+---
+
+## 하네스: 개발 에이전트 팀
+
+**목표:** 탐색, 백엔드·화면 구현, 독립 리뷰를 재사용 가능하게 조율한다.
+
+**트리거:** 구현·수정·보완·재실행 또는 백엔드/화면/코드 탐색/리뷰 요청 시 `agent-team-orchestrator` 스킬을 사용한다. 단순 질문은 직접 응답 가능.
+
+**변경 이력:**
+
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|---|---|---|---|
+| 2026-07-17 | 초기 구성 | `.Codex/agents/`, `.Codex/skills/agent-team-orchestrator/` | 재사용 가능한 개발·리뷰 협업 |
