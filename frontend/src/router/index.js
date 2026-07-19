@@ -1,21 +1,13 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import ProjectList from '../components/ProjectList.vue'
-import ProjectForm from '../components/ProjectForm.vue'
-import IssueList from '../components/IssueList.vue'
-import IssueForm from '../components/IssueForm.vue'
-import IssueDetail from '../components/IssueDetail.vue'
-import WorkflowConsole from '../components/WorkflowConsole.vue'
-
-const routes = [
-  { path: '/',                                component: ProjectList },
-  { path: '/projects/new',                    component: ProjectForm },
-  { path: '/projects/:id',                    component: IssueList },
-  { path: '/projects/:projectId/issues/new',  component: IssueForm },
-  { path: '/issues/:id',                      component: IssueDetail },
-  { path: '/workflow-runs',                   component: WorkflowConsole },
-]
+import Dashboard from '../components/Dashboard.vue'
+import ProjectBoard from '../components/ProjectBoard.vue'
+import IssueWorkspace from '../components/IssueWorkspace.vue'
 
 export default createRouter({
   history: createWebHashHistory(),
-  routes,
+  routes: [
+    { path: '/', component: Dashboard },
+    { path: '/projects/:projectId', component: ProjectBoard },
+    { path: '/projects/:projectId/issues/:issueId', component: IssueWorkspace },
+  ],
 })
