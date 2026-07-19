@@ -5,12 +5,14 @@ import com.example.worker.engine.domain.model.AttemptRecord;
 import com.example.worker.engine.domain.model.WorkflowRun;
 import com.example.worker.engine.domain.model.WorkflowRunId;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
+@Transactional
 class WorkflowRunRepositoryAdapter implements WorkflowRunRepository {
 
     private final WorkflowRunJpaRepository jpaRepository;

@@ -74,7 +74,7 @@ class ActivityContractSerializationTest {
                 new AttemptHistoryResponse(true, 1),
                 new SourceControlRequest(metadata(), workspaceRef(), "CREATE_DRAFT_PR", 1),
                 new SourceControlResponse("https://example.com/pr/1", "DRAFT", 1),
-                new NotificationRequest(metadata(), "slack", "attention needed", 1),
+                new NotificationRequest(metadata(), "ticket-1", "ACTIVITY_COMPLETED", "INFO", "완료", "attention needed", 1),
                 new NotificationResponse(true, 1)
         );
     }

@@ -140,8 +140,11 @@ class AgentWorkerEngineIntegrationTest {
             assertThat(Files.list(runtimeRoot).count()).isEqualTo(1);
 
             // T02: Attempt가 실제 PostgreSQL(Testcontainers)에 저장됐는지 확인
+            WorkflowRunId persistedRunId = workflowRunRepository.findByTemporalWorkflowId(workflowRunId)
+                    .orElseThrow()
+                    .getId();
             List<AttemptRecord> attempts = attemptRecordRepository.findByWorkflowRunId(
-                    WorkflowRunId.of(UUID.fromString(workflowRunId)));
+                    persistedRunId);
             assertThat(attempts).hasSize(1);
             AttemptRecord attempt = attempts.get(0);
             assertThat(attempt.status()).isEqualTo(AttemptStatus.PASSED);

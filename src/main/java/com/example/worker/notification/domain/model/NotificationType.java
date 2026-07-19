@@ -1,0 +1,6 @@
+package com.example.worker.notification.domain.model;
+
+public enum NotificationType {
+    WORKFLOW_CREATED, WORKFLOW_STATUS_CHANGED, STAGE_CHANGED, ATTEMPT_CHANGED,
+    DECISION_RECORDED, ACTIVITY_STARTED, ACTIVITY_COMPLETED, ACTIVITY_FAILED
+}

@@ -1,0 +1,2 @@
+package com.example.worker.notification.api.response; import com.example.worker.notification.application.dto.NotificationPage; import java.util.*;
+public record NotificationPageResponse(List<NotificationResponse> items,String nextCursor){public static NotificationPageResponse from(NotificationPage p){return new NotificationPageResponse(p.items().stream().map(NotificationResponse::from).toList(),p.nextCursor());}}

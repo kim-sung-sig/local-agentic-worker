@@ -3,12 +3,20 @@ package com.example.worker.engine.infrastructure.activity;
 import com.example.worker.engine.application.contract.v1.ActivityRequestMetadata;
 import com.example.worker.engine.application.contract.v1.AttemptHistoryRequest;
 import com.example.worker.engine.application.contract.v1.TicketAssessmentRequest;
+import com.example.worker.engine.application.contract.v1.NotificationRequest;
+import com.example.worker.engine.application.contract.v1.NotificationResponse;
 import com.example.worker.engine.application.port.WorkflowRunRepository;
 import com.example.worker.engine.domain.model.WorkflowRun;
 import com.example.worker.engine.domain.model.WorkflowRunStatus;
 import com.example.worker.engine.domain.model.WorkflowStage;
 import com.example.worker.runtime.application.WorkspaceRuntime;
 import com.example.worker.scm.application.SourceControlPlugin;
+import com.example.worker.issue.application.port.IssueRepository;
+import com.example.worker.issue.domain.model.Issue;
+import com.example.worker.issue.domain.model.Priority;
+import com.example.worker.project.domain.model.ProjectId;
+import com.example.worker.notification.application.dto.CreateNotificationCommand;
+import com.example.worker.notification.application.service.NotificationCommandService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,9 +48,13 @@ class EngineActivitiesImplTest {
     }
 
     private TicketAssessmentRequest assessTicketRequest(String workflowRunId) {
+        return assessTicketRequest(workflowRunId, UUID.randomUUID().toString());
+    }
+
+    private TicketAssessmentRequest assessTicketRequest(String workflowRunId, String ticketId) {
         return new TicketAssessmentRequest(
                 new ActivityRequestMetadata(workflowRunId, WorkflowStage.INTAKE, 1, 1),
-                "ticket-1", "raw spec", 1);
+                ticketId, "raw spec", 1);
     }
 
     @Test
@@ -60,6 +72,20 @@ class EngineActivitiesImplTest {
         assertThat(saved.getCurrentStage()).isEqualTo(WorkflowStage.INTAKE);
         assertThat(saved.getStatus()).isEqualTo(WorkflowRunStatus.RUNNING);
         assertThat(saved.getTemporalWorkflowId()).isEqualTo(workflowRunId);
+    }
+
+    @Test
+    @DisplayName("워크플로 생성 시 요청 ticketId를 저장한다")
+    void assessTicket_storesRequestedTicketId() {
+        String workflowRunId = UUID.randomUUID().toString();
+        UUID ticketId = UUID.randomUUID();
+        when(workflowRunRepository.findByTemporalWorkflowId(workflowRunId)).thenReturn(Optional.empty());
+
+        activities.assessTicket(assessTicketRequest(workflowRunId, ticketId.toString()));
+
+        ArgumentCaptor<WorkflowRun> captor = ArgumentCaptor.forClass(WorkflowRun.class);
+        verify(workflowRunRepository).save(captor.capture());
+        assertThat(captor.getValue().getTicketId()).isEqualTo(ticketId);
     }
 
     @Test
@@ -90,6 +116,8 @@ class EngineActivitiesImplTest {
             return run;
         });
 
+        activities.assessTicket(assessTicketRequest(workflowRunId));
+
         activities.recordAttemptHistory(new AttemptHistoryRequest(
                 new ActivityRequestMetadata(workflowRunId, WorkflowStage.QA, 1, 1),
                 null, null, 50, "FAILED", 1));
@@ -100,5 +128,49 @@ class EngineActivitiesImplTest {
         WorkflowRun run = stored.get();
         assertThat(run.getAttempts()).hasSize(2);
         assertThat(run.getTemporalWorkflowId()).isEqualTo(workflowRunId);
+    }
+
+    @Test
+    @DisplayName("초기와 후속 알림은 같은 영속 WorkflowRun aggregate ID를 사용한다")
+    void sendNotification_usesPersistedAggregateIdBeforeAndAfterAssessment() {
+        String temporalWorkflowId = UUID.randomUUID().toString();
+        UUID ticketId = UUID.randomUUID();
+        java.util.concurrent.atomic.AtomicReference<WorkflowRun> stored = new java.util.concurrent.atomic.AtomicReference<>();
+        when(workflowRunRepository.findByTemporalWorkflowId(temporalWorkflowId))
+                .thenAnswer(invocation -> Optional.ofNullable(stored.get()));
+        when(workflowRunRepository.save(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> {
+            WorkflowRun run = invocation.getArgument(0); stored.set(run); return run;
+        });
+        IssueRepository issueRepository = mock(IssueRepository.class);
+        NotificationCommandService notificationService = mock(NotificationCommandService.class);
+        Issue issue = Issue.create(ProjectId.newId(), 1, "title", "description", Priority.MEDIUM);
+        when(issueRepository.findById(org.mockito.ArgumentMatchers.any())).thenReturn(Optional.of(issue));
+        EngineActivitiesImpl notificationActivities = new EngineActivitiesImpl(workspaceRuntime, sourceControlPlugin,
+                workflowRunRepository, issueRepository, notificationService);
+        NotificationRequest created = new NotificationRequest(
+                new ActivityRequestMetadata(temporalWorkflowId, WorkflowStage.INTAKE, 1, 1), ticketId.toString(),
+                "WORKFLOW_CREATED", "INFO", "생성", "시작", 1);
+        NotificationRequest started = new NotificationRequest(
+                new ActivityRequestMetadata(temporalWorkflowId, WorkflowStage.INTAKE, 1, 1), ticketId.toString(),
+                "ACTIVITY_STARTED", "INFO", "시작", "분석", 1);
+
+        notificationActivities.sendNotification(created);
+        notificationActivities.assessTicket(assessTicketRequest(temporalWorkflowId, ticketId.toString()));
+        notificationActivities.sendNotification(started);
+
+        ArgumentCaptor<CreateNotificationCommand> commands = ArgumentCaptor.forClass(CreateNotificationCommand.class);
+        verify(notificationService, org.mockito.Mockito.times(2)).create(commands.capture());
+        assertThat(commands.getAllValues().stream().map(CreateNotificationCommand::workflowRunId).distinct())
+                .containsExactly(stored.get().getId().value());
+    }
+
+    @Test
+    @DisplayName("호환 생성자는 알림 의존성이 모두 없으면 로그 전송으로 성공한다")
+    void sendNotification_withoutNotificationDependencies_isDeliveredForCompatibility() {
+        NotificationResponse response = activities.sendNotification(new NotificationRequest(
+                new ActivityRequestMetadata("non-uuid-workflow", WorkflowStage.INTAKE, 1, 1), "ticket-1",
+                "WORKFLOW_CREATED", "INFO", "생성", "시작", 1));
+
+        assertThat(response.delivered()).isTrue();
     }
 }
