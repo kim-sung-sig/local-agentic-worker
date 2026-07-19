@@ -94,3 +94,20 @@ All commands are in [`.Codex/commands/`](.Codex/commands/) (V2.0 — skill당 1 
 ```
 
 **Utilities**: `/explain`, `/patch`, `/refactor`, `/perf`, `/security`, `/docs`, `/jpa`
+
+---
+
+## 하네스: 개발 에이전트 팀
+
+**목표:** Claude와 Codex에서 탐색, 백엔드·화면 구현, 독립 리뷰를 같은 역할 계약으로 조율한다.
+
+**트리거:** 구현·수정·보완·재실행 또는 백엔드/화면/코드 탐색/리뷰 요청 시 `agent-team-orchestrator` 스킬을 사용한다. 단순 질문은 직접 응답 가능.
+
+**Agent Worker 실행 규약:** [`.agents/agent-worker-runtime.md`](.agents/agent-worker-runtime.md)는 격리 Worker의 worktree 소유권, 반려 재실행 identity, repository hook 신뢰 경계를 고정한다.
+
+**변경 이력:**
+
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|---|---|---|---|
+| 2026-07-17 | 초기 구성 | `.codex/agents/`, `.codex/skills/agent-team-orchestrator/` | 재사용 가능한 개발·리뷰 협업 |
+| 2026-07-17 | Claude·Codex 공용화 | `.agents/agent-team.md`, `.claude/agents/`, 양쪽 오케스트레이터 | 도구별 로딩 경로를 유지하며 역할 계약 통일 |

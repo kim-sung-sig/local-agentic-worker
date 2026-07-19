@@ -73,6 +73,9 @@ class AgentWorkerServiceTest {
             savedStatuses.add(job.getStatus());
             return job;
         });
+    }
+
+    private void stubDraftPr() {
         when(pullRequestService.createDraftPr(any(), any(), any(), any(), any()))
                 .thenReturn("https://github.com/org/repo/pull/1");
     }
@@ -111,12 +114,14 @@ class AgentWorkerServiceTest {
     class DevelopPhase {
 
         @Test
-        @DisplayName("DEVELOP 트리거 시 PLANNING → CODING → VERIFYING → SUCCEEDED 순으로 저장된다")
+        @DisplayName("DEVELOP 트리거 시 PENDING → CODING → VERIFYING → SUCCEEDED 순으로 저장된다")
         void develop_savesCorrectStatusTransitions() {
+            stubDraftPr();
+
             service.handlePhaseRequested(developEvent());
 
             assertThat(savedStatuses).containsSubsequence(
-                    AgentJobStatus.PLANNING,
+                    AgentJobStatus.PENDING,
                     AgentJobStatus.CODING,
                     AgentJobStatus.VERIFYING,
                     AgentJobStatus.SUCCEEDED);
@@ -153,6 +158,7 @@ class AgentWorkerServiceTest {
             when(issueRepository.findById(issueId)).thenReturn(Optional.of(issue));
             when(agentJobRepository.findByIssueId(issueIdValue)).thenReturn(List.of(existingJob));
             when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+            stubDraftPr();
         }
 
         @Test

@@ -2,7 +2,10 @@
   <div id="app">
     <header class="header">
       <h1>Agentic Worker</h1>
-      <router-link class="btn btn-secondary btn-sm" to="/">Projects</router-link>
+      <div class="header-actions">
+        <router-link class="btn btn-secondary btn-sm" to="/workflow-runs">Workflow Runs</router-link>
+        <router-link class="btn btn-secondary btn-sm" to="/">Projects</router-link>
+      </div>
     </header>
     <div class="layout">
       <nav class="sidebar">

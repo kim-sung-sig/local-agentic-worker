@@ -1,0 +1,3 @@
+package com.example.worker.notification.api.response;
+import com.example.worker.notification.domain.model.Notification; import java.time.Instant; import java.util.UUID;
+public record NotificationResponse(String eventId,UUID notificationId,UUID projectId,UUID workflowRunId,String type,String severity,String publisher,String title,String message,Instant createdAt,Instant readAt) { public static NotificationResponse from(Notification n){return new NotificationResponse(String.valueOf(n.id()),n.notificationId(),n.projectId(),n.workflowRunId(),n.type().name(),n.severity().name(),n.publisher(),n.title(),n.message(),n.createdAt(),n.readAt());} }

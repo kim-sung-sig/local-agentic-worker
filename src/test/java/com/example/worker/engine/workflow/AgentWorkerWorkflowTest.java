@@ -31,6 +31,7 @@ import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.testing.WorkflowReplayer;
 import io.temporal.worker.Worker;
 import org.mockito.InOrder;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +39,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,6 +49,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -174,6 +177,15 @@ class AgentWorkerWorkflowTest {
         verify(activities, times(1)).implement(any());
         verify(activities, times(1)).runQualityAssurance(any());
         verify(activities, times(2)).manageSourceControl(any());
+
+        ArgumentCaptor<NotificationRequest> notifications = ArgumentCaptor.forClass(NotificationRequest.class);
+        verify(activities, org.mockito.Mockito.atLeast(1)).sendNotification(notifications.capture());
+        assertThat(notifications.getAllValues().stream().map(NotificationRequest::type))
+                .contains("STAGE_CHANGED", "WORKFLOW_STATUS_CHANGED", "DECISION_RECORDED", "ACTIVITY_STARTED", "ACTIVITY_COMPLETED");
+        assertThat(notifications.getAllValues().stream()
+                .filter(notification -> "DECISION_RECORDED".equals(notification.type()))
+                .map(NotificationRequest::message).distinct())
+                .contains("INTAKE: APPROVE", "PLANNING: APPROVE", "QA: APPROVE", "REVIEW_MERGE: APPROVE");
     }
 
     @Test
@@ -202,6 +214,36 @@ class AgentWorkerWorkflowTest {
         assertThat(result).isEqualTo(WorkflowRunStatus.COMPLETED.name());
         verify(activities, times(2)).implement(any());
         verify(activities, times(2)).runQualityAssurance(any());
+    }
+
+    @Test
+    @DisplayName("QA 반려 후 재개한 구현은 이전 실행과 다른 idempotency key를 사용한다")
+    void reject_atQaCreatesNewImplementationExecutionIdentity() throws Exception {
+        AgentWorkerWorkflow stub = newStub("reject-identity-run");
+        CompletableFuture<String> future = WorkflowClient.execute(stub::run, newRequest("reject-identity-run"));
+
+        awaitStage(stub, WorkflowStage.INTAKE);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.PLANNING);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.QA);
+
+        stub.reject("구현 방향 수정 필요", WorkflowStage.IMPLEMENTATION);
+        awaitStatus(stub, WorkflowRunStatus.PAUSED);
+        stub.retryStage();
+        awaitStage(stub, WorkflowStage.QA);
+        stub.approve();
+        awaitStage(stub, WorkflowStage.REVIEW_MERGE);
+        stub.approve();
+
+        assertThat(future.get(10, TimeUnit.SECONDS)).isEqualTo(WorkflowRunStatus.COMPLETED.name());
+
+        ArgumentCaptor<ImplementationRequest> requests = ArgumentCaptor.forClass(ImplementationRequest.class);
+        verify(activities, times(2)).implement(requests.capture());
+
+        List<ImplementationRequest> capturedRequests = requests.getAllValues();
+        assertThat(capturedRequests.get(0).metadata().idempotencyKey())
+                .isNotEqualTo(capturedRequests.get(1).metadata().idempotencyKey());
     }
 
     @Test
@@ -296,7 +338,7 @@ class AgentWorkerWorkflowTest {
         awaitStage(stub, WorkflowStage.REVIEW_MERGE);
 
         // REVIEW_MERGE 게이트에 도달 — CREATE_DRAFT_PR은 이미 실행됐지만 아직 승인 전이라 MERGE는 없어야 한다
-        verify(activities, times(1)).manageSourceControl(argThat(req -> "CREATE_DRAFT_PR".equals(req.action())));
+        verify(activities, timeout(2000).times(1)).manageSourceControl(argThat(req -> "CREATE_DRAFT_PR".equals(req.action())));
         verify(activities, never()).manageSourceControl(argThat(req -> "MERGE".equals(req.action())));
 
         stub.approve();
@@ -349,6 +391,32 @@ class AgentWorkerWorkflowTest {
 
         assertThat(result).isEqualTo(WorkflowRunStatus.CANCELLED.name());
         verify(activities, never()).planImplementation(any());
+    }
+
+    @Test
+    @DisplayName("수정 요청과 재개는 서로 다른 결정 및 상태 알림으로 기록된다")
+    void requestRevisionAndRetry_emitDistinctDecisionAndStatusNotifications() throws Exception {
+        AgentWorkerWorkflow stub = newStub("revision-notification-run");
+        CompletableFuture<String> future = WorkflowClient.execute(stub::run, newRequest("revision-notification-run"));
+
+        awaitStage(stub, WorkflowStage.INTAKE);
+        stub.requestRevision("보완 필요");
+        awaitStatus(stub, WorkflowRunStatus.PAUSED);
+        stub.retryStage();
+        awaitStage(stub, WorkflowStage.INTAKE);
+        stub.cancel();
+        assertThat(future.get(10, TimeUnit.SECONDS)).isEqualTo(WorkflowRunStatus.CANCELLED.name());
+
+        ArgumentCaptor<NotificationRequest> notifications = ArgumentCaptor.forClass(NotificationRequest.class);
+        verify(activities, org.mockito.Mockito.atLeast(1)).sendNotification(notifications.capture());
+        assertThat(notifications.getAllValues().stream()
+                .filter(notification -> "DECISION_RECORDED".equals(notification.type()))
+                .map(NotificationRequest::message))
+                .contains("INTAKE: REQUEST_REVISION", "INTAKE: RETRY", "INTAKE: CANCEL");
+        assertThat(notifications.getAllValues().stream()
+                .filter(notification -> "WORKFLOW_STATUS_CHANGED".equals(notification.type()))
+                .map(NotificationRequest::message))
+                .contains("PAUSED", "RUNNING", "CANCELLED");
     }
 
     @Test

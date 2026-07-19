@@ -22,6 +22,7 @@ body {
   flex-shrink: 0;
 }
 .header h1 { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+.header-actions { display: flex; gap: 8px; }
 
 .layout {
   display: flex;
@@ -141,6 +142,44 @@ body {
 .error-msg { color: #dc2626; font-size: 12px; margin-top: 4px; }
 .empty-state { text-align: center; color: #9ca3af; padding: 48px 0; }
 .loading { color: #9ca3af; padding: 48px; text-align: center; }
+
+/* Workflow console */
+.workflow-console { max-width: 1440px; margin: 0 auto; }
+.workflow-subtitle { color: #6b7280; margin-top: 4px; }
+.workflow-filters { display: flex; gap: 8px; margin-bottom: 16px; }
+.workflow-filters input, .workflow-filters select, .workflow-reason textarea, .workflow-reason select {
+  border: 1px solid #d1d5db; border-radius: 6px; font: inherit; padding: 8px 10px; background: #fff;
+}
+.workflow-filters input { min-width: 260px; }
+.workflow-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, .9fr); gap: 16px; align-items: start; }
+.workflow-list, .workflow-detail { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.workflow-list-heading { padding: 12px 16px; font-size: 13px; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+.workflow-table-wrap { overflow-x: auto; }
+.workflow-table { border-radius: 0; box-shadow: none; min-width: 620px; }
+.workflow-table tr.selected td { background: #eef2ff; }
+.workflow-table td strong, .workflow-detail-header strong { display: block; color: #1d4ed8; }
+.workflow-table td small, .workflow-detail-header small { display: block; color: #9ca3af; font-size: 11px; margin-top: 3px; }
+.workflow-detail { padding: 18px; }
+.workflow-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+.workflow-timeline { list-style: none; margin: 18px 0; padding: 0; }
+.workflow-timeline li { display: flex; align-items: center; gap: 10px; min-height: 38px; color: #9ca3af; font-size: 13px; }
+.timeline-index { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid #d1d5db; border-radius: 50%; font-size: 11px; }
+.workflow-timeline .done { color: #166534; }.workflow-timeline .done .timeline-index { background: #dcfce7; border-color: #86efac; }
+.workflow-timeline .current { color: #1d4ed8; font-weight: 600; }.workflow-timeline .current .timeline-index { background: #dbeafe; border-color: #60a5fa; }
+.workflow-timeline .failed { color: #b91c1c; font-weight: 600; }.workflow-timeline .failed .timeline-index { background: #fee2e2; border-color: #fca5a5; }
+.workflow-actions, .attempt-history { border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px; }
+.workflow-actions h3, .attempt-history h3 { font-size: 13px; margin-bottom: 10px; }
+.workflow-action-buttons { display: flex; flex-wrap: wrap; gap: 8px; }.btn-danger { background: #dc2626; color: #fff; }
+.workflow-reason { display: block; margin: 10px 0; }.workflow-reason span { display: block; font-size: 12px; margin-bottom: 4px; }.workflow-reason textarea { width: 100%; resize: vertical; }
+.action-message { color: #4f46e5; font-size: 12px; margin-bottom: 8px; }.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.attempt-history .table { box-shadow: none; font-size: 12px; }.attempt-history .table th, .attempt-history .table td { padding: 8px; }
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { padding: 16px; }
+  .workflow-layout { grid-template-columns: 1fr; }
+  .workflow-filters { flex-wrap: wrap; }
+  .workflow-filters input { min-width: 0; width: 100%; }
+}
 
 /* Issue detail */
 .detail-card { background: #fff; border-radius: 8px; padding: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.07); max-width: 680px; }

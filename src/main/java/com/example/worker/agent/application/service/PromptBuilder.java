@@ -177,7 +177,7 @@ public final class PromptBuilder {
 
                 ## 출력 형식
                 ```
-                matchRate: {N}%
+                matchRate: {N}%%
                 PASS / FAIL
                 미구현 항목: ...
                 ```""".formatted(slug, slug);

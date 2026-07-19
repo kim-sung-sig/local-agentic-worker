@@ -7,4 +7,6 @@ import java.util.UUID;
 interface ProjectJpaRepository extends JpaRepository<ProjectJpaEntity, UUID> {
 
     boolean existsByLocalPath(String localPath);
+
+    boolean existsByRepositoryUri(String repositoryUri);
 }
