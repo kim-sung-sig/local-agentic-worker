@@ -42,7 +42,7 @@ flowchart LR
     O --> E
 ```
 
-One execution is submitted with an idempotency key (`workflowRunId + stage + attempt`). The Worker returns `202 Accepted` with an execution ID, persists ordered events and artifact references, and exposes status/cancel/event reads. A Temporal Activity polls the execution with heartbeats. A retry therefore observes the same execution ID rather than starting a second agent process.
+One execution is submitted with an idempotency key (`workflowRunId + stage + attempt + stageExecutionGeneration`). A Temporal Activity retry keeps the same key, so it observes the same execution ID rather than starting a second agent process. An approval rejection or revision that re-enters a stage increments that stage's execution generation; it must never reuse a prior stage result.
 
 The Worker execution ledger and ordered event cursor are durable Worker-owned state; an in-memory event store is not sufficient because a Worker restart must preserve idempotency and status reads.
 
@@ -52,7 +52,7 @@ The Engine must not share a Temporal Activity task queue directly with multiple 
 
 The current `engine.application.contract.v1` and `EngineActivities` remain the internal Java/Temporal workflow contract during migration. Their existing `WorkspaceRef` is intended to be opaque, but the reference implementation currently passes a literal local path to local workspace and source-control code. That v1 path coupling is **not** exported to an Agent Worker.
 
-The new HTTP schema is `agent-worker/v1`, not a reinterpretation of the existing Java records. An Engine-side adapter maps only the four AI stages (`ASSESSMENT`, `PLANNING`, `IMPLEMENTATION`, `QA`) to the Worker API. `prepareWorkspace`, source control, and notifications remain on the existing Engine path until their own remote-Worker migrations are complete. No external Worker is allowed to poll the existing `EngineActivities` Task Queue.
+The new HTTP schema is `agent-worker/v1`, not a reinterpretation of the existing Java records. No external Worker is allowed to poll the existing `EngineActivities` Task Queue. A remote implementation/QA migration is enabled only with the co-located Worker workspace and source-control slice: clone, worktree, Git credentials and PR actions have one Worker owner. The existing Engine-local `prepareWorkspace` and source-control Activities remain active only while all dependent stages are local; an Engine-local `WorkspaceRef` is never sent to a remote Worker.
 
 Before the first remote execution, Control Plane supplies a non-secret `ProjectExecutionSnapshot`: project ID, repository URI, base branch, credential reference, and requested source commit. The Worker resolves the credential reference locally; the credential value never crosses the HTTP contract. This replaces the reference implementation's hard-coded `main` branch and synthetic artifact references.
 
@@ -107,7 +107,7 @@ At execution start the Worker records a manifest containing content hashes and r
 - `CLAUDE.md`, `.claude/settings.json`, skills, agents, and hooks;
 - project-local `.agents/` shared instructions.
 
-Only regular files below the resolved repository root are included. The snapshotter rejects symbolic links, path escapes, oversized files, and paths outside an explicit allowlist. It never evaluates a hook while snapshotting. Registered repositories are trusted inputs; untrusted repository onboarding requires a separate security design.
+Only regular files below the resolved repository root are included. The snapshotter rejects symbolic links, path escapes, oversized files, and paths outside an explicit allowlist. It never evaluates a hook while snapshotting. Repository hooks are disabled by default even for registered repositories; only a project registration trust policy and an explicit path allowlist may enable them. The provider process receives no hook-derived environment or secret values.
 
 It creates generated documents under `.agentic/context/` in the clone/worktree:
 

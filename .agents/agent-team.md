@@ -2,6 +2,8 @@
 
 이 문서는 Claude와 Codex가 공유하는 역할·권한·협업 기준이다. 각 도구의 `.claude/agents/`와 `.codex/agents/` 정의는 이 계약을 따라야 한다.
 
+Agent Worker의 격리 실행·idempotency·repository harness 신뢰 경계는 [agent-worker-runtime.md](agent-worker-runtime.md)를 추가로 따른다.
+
 | 역할 | 권한 | 책임 |
 |---|---|---|
 | `code-explorer` | 읽기 전용 | 영향 범위, 계약, 기존 패턴·테스트 탐색 |
