@@ -1,6 +1,8 @@
 package com.example.worker.engine.integration;
 
+import com.example.worker.contracts.agentworker.EngineNotificationRequested;
 import com.example.worker.engine.application.port.AttemptRecordRepository;
+import com.example.worker.engine.application.port.NotificationPublisher;
 import com.example.worker.engine.application.port.WorkflowRunRepository;
 import com.example.worker.engine.domain.model.AttemptRecord;
 import com.example.worker.engine.domain.model.AttemptStatus;
@@ -105,8 +107,9 @@ class AgentWorkerEngineIntegrationTest {
 
         GitWorktreeRuntime workspaceRuntime = new GitWorktreeRuntime(sourceRepo.toString(), runtimeRoot.toString());
         FakeSourceControlPlugin sourceControlPlugin = new FakeSourceControlPlugin();
+        RecordingNotificationPublisher notificationPublisher = new RecordingNotificationPublisher();
         EngineActivitiesImpl activities = new EngineActivitiesImpl(
-                workspaceRuntime, sourceControlPlugin, workflowRunRepository);
+                workspaceRuntime, sourceControlPlugin, workflowRunRepository, notificationPublisher);
 
         TestWorkflowEnvironment testEnvironment = TestWorkflowEnvironment.newInstance();
         try {
@@ -117,11 +120,12 @@ class AgentWorkerEngineIntegrationTest {
 
             WorkflowClient workflowClient = testEnvironment.getWorkflowClient();
             String workflowRunId = UUID.randomUUID().toString();
+            String ticketId = UUID.randomUUID().toString();
             AgentWorkerWorkflow stub = workflowClient.newWorkflowStub(AgentWorkerWorkflow.class,
                     WorkflowOptions.newBuilder().setTaskQueue(TASK_QUEUE).setWorkflowId(workflowRunId).build());
 
             CompletableFuture<String> future = WorkflowClient.execute(stub::run,
-                    new StartAgentWorkflowRequest(workflowRunId, "ticket-1", "raw specification", 1));
+                    new StartAgentWorkflowRequest(workflowRunId, ticketId, "raw specification", 1));
 
             awaitStage(stub, WorkflowStage.INTAKE);
             stub.approve();
@@ -186,6 +190,17 @@ class AgentWorkerEngineIntegrationTest {
         boolean finished = process.waitFor(30, TimeUnit.SECONDS);
         if (!finished || process.exitValue() != 0) {
             throw new IllegalStateException("Command failed: " + String.join(" ", cmd) + "\n" + output);
+        }
+    }
+
+    /** Records published notifications instead of requiring a real Kafka broker in this test. */
+    private static final class RecordingNotificationPublisher implements NotificationPublisher {
+
+        private final List<EngineNotificationRequested> published = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        @Override
+        public void publish(EngineNotificationRequested event) {
+            published.add(event);
         }
     }
 

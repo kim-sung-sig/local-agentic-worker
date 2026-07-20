@@ -1,5 +1,6 @@
 package com.example.worker.engine.infrastructure.activity;
 
+import com.example.worker.contracts.agentworker.EngineNotificationRequested;
 import com.example.worker.engine.application.contract.v1.ArtifactRef;
 import com.example.worker.engine.application.contract.v1.AttemptHistoryRequest;
 import com.example.worker.engine.application.contract.v1.AttemptHistoryResponse;
@@ -19,17 +20,12 @@ import com.example.worker.engine.application.contract.v1.TicketAssessmentRespons
 import com.example.worker.engine.application.contract.v1.WorkspaceRef;
 import com.example.worker.engine.application.contract.v1.WorkspaceRequest;
 import com.example.worker.engine.application.contract.v1.WorkspaceResponse;
+import com.example.worker.engine.application.port.NotificationPublisher;
 import com.example.worker.engine.application.port.WorkflowRunRepository;
 import com.example.worker.engine.domain.model.AttemptRecord;
 import com.example.worker.engine.domain.model.AttemptStatus;
 import com.example.worker.engine.domain.model.WorkflowRun;
 import com.example.worker.engine.workflow.EngineActivities;
-import com.example.worker.issue.application.port.IssueRepository;
-import com.example.worker.issue.domain.model.IssueId;
-import com.example.worker.notification.application.dto.CreateNotificationCommand;
-import com.example.worker.notification.application.service.NotificationCommandService;
-import com.example.worker.notification.domain.model.NotificationSeverity;
-import com.example.worker.notification.domain.model.NotificationType;
 import com.example.worker.runtime.application.WorkspaceRuntime;
 import com.example.worker.scm.application.SourceControlPlugin;
 import com.example.worker.scm.application.SourceControlPlugin.CreateDraftPullRequestCommand;
@@ -38,7 +34,6 @@ import com.example.worker.scm.application.SourceControlPlugin.PullRequestResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -61,26 +56,16 @@ public class EngineActivitiesImpl implements EngineActivities {
     private final WorkspaceRuntime workspaceRuntime;
     private final SourceControlPlugin sourceControlPlugin;
     private final WorkflowRunRepository workflowRunRepository;
-    private final IssueRepository issueRepository;
-    private final NotificationCommandService notificationCommandService;
+    private final NotificationPublisher notificationPublisher;
 
-    @Autowired
     public EngineActivitiesImpl(WorkspaceRuntime workspaceRuntime,
                                  SourceControlPlugin sourceControlPlugin,
                                  WorkflowRunRepository workflowRunRepository,
-                                 IssueRepository issueRepository,
-                                 NotificationCommandService notificationCommandService) {
+                                 NotificationPublisher notificationPublisher) {
         this.workspaceRuntime = workspaceRuntime;
         this.sourceControlPlugin = sourceControlPlugin;
         this.workflowRunRepository = workflowRunRepository;
-        this.issueRepository = issueRepository;
-        this.notificationCommandService = notificationCommandService;
-    }
-
-    /** Compatibility constructor for isolated workflow tests that do not execute notifications. */
-    public EngineActivitiesImpl(WorkspaceRuntime workspaceRuntime, SourceControlPlugin sourceControlPlugin,
-                                WorkflowRunRepository workflowRunRepository) {
-        this(workspaceRuntime, sourceControlPlugin, workflowRunRepository, null, null);
+        this.notificationPublisher = notificationPublisher;
     }
 
     @Override
@@ -97,18 +82,7 @@ public class EngineActivitiesImpl implements EngineActivities {
     // skipped when a row already exists (e.g. Activity retry after a task failure).
     private WorkflowRun ensureWorkflowRunExists(String workflowRunId, String ticketId) {
         return workflowRunRepository.findByTemporalWorkflowId(workflowRunId)
-                .orElseGet(() -> workflowRunRepository.save(WorkflowRun.create(ticketIdForWorkflowRun(ticketId, workflowRunId), workflowRunId)));
-    }
-
-    private UUID ticketIdForWorkflowRun(String ticketId, String workflowRunId) {
-        try {
-            return UUID.fromString(ticketId);
-        } catch (IllegalArgumentException exception) {
-            if (issueRepository == null && notificationCommandService == null) {
-                return UUID.fromString(workflowRunId);
-            }
-            throw exception;
-        }
+                .orElseGet(() -> workflowRunRepository.save(WorkflowRun.create(UUID.fromString(ticketId), workflowRunId)));
     }
 
     @Override
@@ -178,24 +152,20 @@ public class EngineActivitiesImpl implements EngineActivities {
         return new SourceControlResponse(result.url(), result.status(), 1);
     }
 
+    // Stage 2 (app-boundary): Engine never resolves Issue/Notification state itself — it only knows
+    // its own WorkflowRun aggregate and the ticketId supplied by the caller. Publishing this Kafka
+    // message (rather than calling IssueRepository/NotificationCommandService in-process) is what
+    // lets Control Plane and Agent Engine become separate deployables sharing only `contracts`.
     @Override
     public NotificationResponse sendNotification(NotificationRequest request) {
-        if (issueRepository == null && notificationCommandService == null) {
-            log.info("[Notification] type={} message={}", request.type(), request.message());
-            return new NotificationResponse(true, 1);
-        }
-        if (issueRepository == null || notificationCommandService == null) {
-            throw new IllegalStateException("Notification dependencies are not configured");
-        }
         WorkflowRun run = workflowRunRepository.findByTemporalWorkflowId(request.metadata().workflowRunId())
                 .orElseGet(() -> ensureWorkflowRunExists(request.metadata().workflowRunId(), request.ticketId()));
-        UUID ticketId = run.getTicketId();
-        var issue = issueRepository.findById(IssueId.of(ticketId))
-                .orElseThrow(() -> new IllegalStateException("Issue not found: " + ticketId));
-        UUID notificationWorkflowRunId = run.getId().value();
-        notificationCommandService.create(new CreateNotificationCommand(issue.getProjectId().value(), notificationWorkflowRunId,
-                request.metadata().idempotencyKey() + ":" + request.type() + ":" + request.title() + ":" + request.message(),
-                NotificationType.valueOf(request.type()), NotificationSeverity.valueOf(request.severity()), request.title(), request.message()));
+        String idempotencyKey = request.metadata().idempotencyKey() + ":" + request.type() + ":" + request.title()
+                + ":" + request.message();
+        notificationPublisher.publish(new EngineNotificationRequested(
+                run.getId().value().toString(), run.getTicketId().toString(),
+                request.type(), request.severity(), request.title(), request.message(),
+                idempotencyKey, Instant.now()));
         log.info("[Notification] type={} message={}", request.type(), request.message());
         return new NotificationResponse(true, 1);
     }
