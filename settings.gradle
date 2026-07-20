@@ -1,3 +1,5 @@
 rootProject.name = 'worker'
 
 include 'contracts'
+include 'control-plane-app'
+include 'agent-engine-app'
