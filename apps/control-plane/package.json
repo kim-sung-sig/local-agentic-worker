@@ -12,6 +12,7 @@
   "dependencies": {
     "@agentic-worker/contracts": "*",
     "@agentic-worker/db": "*",
+    "@node-rs/argon2": "^2.0.2",
     "nuxt": "^4.5.0",
     "pg": "^8.13.1",
     "vue": "^3.5.0",
