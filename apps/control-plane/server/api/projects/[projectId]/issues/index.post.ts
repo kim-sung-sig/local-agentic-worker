@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { defineEventHandler, readBody, getRouterParam, createError } from 'h3'
 import { createIssue } from '../../../../utils/issue-service.js'
 import { getProject } from '../../../../utils/project-service.js'
+import { requireProjectRole } from '../../../../utils/auth-guard.js'
 
 const CreateIssueSchema = z.object({
   title: z.string().min(1),
@@ -11,6 +12,7 @@ const CreateIssueSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   const projectId = getRouterParam(event, 'projectId')!
+  await requireProjectRole(event, projectId, 'MEMBER')
   if (!(await getProject(projectId))) {
     throw createError({ statusCode: 404, statusMessage: 'Project not found' })
   }

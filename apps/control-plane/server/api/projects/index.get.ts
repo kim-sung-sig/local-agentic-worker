@@ -1,4 +1,8 @@
 import { defineEventHandler } from 'h3'
 import { listProjects } from '../../utils/project-service.js'
+import { requireSession } from '../../utils/auth-guard.js'
 
-export default defineEventHandler(() => listProjects())
+export default defineEventHandler(async (event) => {
+  await requireSession(event)
+  return listProjects()
+})

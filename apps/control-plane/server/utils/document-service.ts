@@ -111,6 +111,23 @@ export async function addRevision(documentId: string, content: string): Promise<
   return toRevisionView(row)
 }
 
+/** Reads a document's `projectId` by id, for route-level authorization. Returns null if unknown. */
+export async function getDocumentProjectId(documentId: string): Promise<string | null> {
+  const [row] = await getDb().select({ projectId: controlPlane.documents.projectId })
+    .from(controlPlane.documents)
+    .where(eq(controlPlane.documents.id, documentId))
+  return row?.projectId ?? null
+}
+
+/** Reads a revision's parent document's `projectId` by revision id, for route-level authorization. */
+export async function getRevisionProjectId(revisionId: string): Promise<string | null> {
+  const [row] = await getDb().select({ projectId: controlPlane.documents.projectId })
+    .from(controlPlane.documentRevisions)
+    .innerJoin(controlPlane.documents, eq(controlPlane.documentRevisions.documentId, controlPlane.documents.id))
+    .where(eq(controlPlane.documentRevisions.id, revisionId))
+  return row?.projectId ?? null
+}
+
 /**
  * Approval is a status change on the existing revision row - only approvedAt and
  * approvedByUserId are updated, never content, and no new revision is inserted. Wrapped in

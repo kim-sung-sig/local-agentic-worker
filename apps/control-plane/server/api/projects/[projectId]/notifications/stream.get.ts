@@ -2,6 +2,7 @@ import { and, asc, eq, gt } from 'drizzle-orm'
 import { defineEventHandler, getHeader, getRouterParam, sendStream, setResponseHeaders } from 'h3'
 import { controlPlane } from '@agentic-worker/db'
 import { getDb } from '../../../../utils/db.js'
+import { requireProjectRole } from '../../../../utils/auth-guard.js'
 import type { NotificationView } from '../../../../utils/notification-service.js'
 
 const KEEP_ALIVE_INTERVAL_MS = 15000
@@ -40,6 +41,7 @@ function isValidCursor(lastEventId: string): boolean {
 
 export default defineEventHandler(async (event) => {
   const projectId = getRouterParam(event, 'projectId')!
+  await requireProjectRole(event, projectId, 'MEMBER')
   const lastEventId = getHeader(event, 'last-event-id')
 
   setResponseHeaders(event, {

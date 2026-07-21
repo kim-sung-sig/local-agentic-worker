@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { defineEventHandler, readBody, getRouterParam, createError } from 'h3'
 import { createDocument } from '../../../../utils/document-service.js'
 import { getIssue } from '../../../../utils/issue-service.js'
+import { requireProjectRole } from '../../../../utils/auth-guard.js'
 
 const CreateDocumentSchema = z.object({
   projectId: z.string().min(1),
@@ -20,9 +21,11 @@ const CreateDocumentSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   const issueId = getRouterParam(event, 'issueId')!
-  if (!(await getIssue(issueId))) {
+  const issue = await getIssue(issueId)
+  if (!issue) {
     throw createError({ statusCode: 404, statusMessage: 'Issue not found' })
   }
+  await requireProjectRole(event, issue.projectId, 'MEMBER')
   const parsed = CreateDocumentSchema.safeParse(await readBody(event))
   if (!parsed.success) {
     throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]?.message ?? 'Invalid document' })
