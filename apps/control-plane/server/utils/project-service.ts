@@ -27,17 +27,24 @@ function toView(row: typeof controlPlane.projects.$inferSelect): ProjectView {
   }
 }
 
-export async function registerProject(input: RegisterProjectInput): Promise<ProjectView> {
-  const [row] = await getDb().insert(controlPlane.projects).values({
-    name: input.name,
-    repositoryUri: input.repositoryUri,
-    baseBranch: input.baseBranch ?? 'main',
-    credentialRef: input.credentialRef ?? null,
-  }).returning()
-  if (!row) {
-    throw new Error('registerProject: insert returned no row')
-  }
-  return toView(row)
+export async function registerProject(input: RegisterProjectInput, ownerUserId: string): Promise<ProjectView> {
+  return getDb().transaction(async (tx) => {
+    const [row] = await tx.insert(controlPlane.projects).values({
+      name: input.name,
+      repositoryUri: input.repositoryUri,
+      baseBranch: input.baseBranch ?? 'main',
+      credentialRef: input.credentialRef ?? null,
+    }).returning()
+    if (!row) {
+      throw new Error('registerProject: insert returned no row')
+    }
+    await tx.insert(controlPlane.memberships).values({
+      userId: ownerUserId,
+      projectId: row.id,
+      role: 'OWNER',
+    })
+    return toView(row)
+  })
 }
 
 export async function listProjects(): Promise<ProjectView[]> {
