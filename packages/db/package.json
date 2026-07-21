@@ -1,0 +1,27 @@
+{
+  "name": "@agentic-worker/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "npm run db:generate:control-plane && npm run db:generate:engine",
+    "db:generate:control-plane": "drizzle-kit generate --config=drizzle.control-plane.config.ts",
+    "db:generate:engine": "drizzle-kit generate --config=drizzle.engine.config.ts",
+    "db:migrate:control-plane": "drizzle-kit migrate --config=drizzle.control-plane.config.ts",
+    "db:migrate:engine": "drizzle-kit migrate --config=drizzle.engine.config.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10",
+    "pg": "^8.13.1",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
+  }
+}
