@@ -6,15 +6,23 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "test": "vitest run"
   },
   "dependencies": {
     "@agentic-worker/contracts": "*",
+    "@agentic-worker/db": "*",
     "nuxt": "^4.5.0",
-    "vue": "^3.5.0"
+    "pg": "^8.13.1",
+    "vue": "^3.5.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@nuxt/test-utils": "^4.0.3",
+    "@types/pg": "^8.11.10",
+    "testcontainers": "^10.13.2",
     "typescript": "^5.7.2",
+    "vitest": "^4.1.10",
     "vue-tsc": "^2.2.0"
   }
 }
