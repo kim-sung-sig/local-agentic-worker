@@ -105,6 +105,16 @@ describe('control_plane.document_revisions', () => {
     const names = columnNames(controlPlane.documentRevisions)
     expect(names).not.toContain('updated_at')
   })
+
+  it('supports approval as a status change: approved_at and approved_by_user_id, both nullable', () => {
+    const names = columnNames(controlPlane.documentRevisions)
+    expect(names).toEqual(expect.arrayContaining(['approved_at', 'approved_by_user_id']))
+
+    const approvedAt = getTableConfig(controlPlane.documentRevisions).columns.find((c) => c.name === 'approved_at')
+    const approvedBy = getTableConfig(controlPlane.documentRevisions).columns.find((c) => c.name === 'approved_by_user_id')
+    expect(approvedAt?.notNull).toBe(false)
+    expect(approvedBy?.notNull).toBe(false)
+  })
 })
 
 describe('control_plane.document_artifacts', () => {

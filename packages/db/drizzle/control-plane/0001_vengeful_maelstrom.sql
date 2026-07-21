@@ -1,0 +1,3 @@
+ALTER TABLE "control_plane"."document_revisions" ADD COLUMN "approved_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "control_plane"."document_revisions" ADD COLUMN "approved_by_user_id" uuid;--> statement-breakpoint
+ALTER TABLE "control_plane"."document_revisions" ADD CONSTRAINT "document_revisions_approved_by_user_id_users_id_fk" FOREIGN KEY ("approved_by_user_id") REFERENCES "control_plane"."users"("id") ON DELETE no action ON UPDATE no action;
