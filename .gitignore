@@ -37,3 +37,9 @@ out/
 .vscode/
 
 /frontend/node_modules
+
+### Nuxt / Temporal TypeScript monorepo (docs/01-plan/app-boundaries) ###
+node_modules/
+.nuxt/
+.output/
+*.tsbuildinfo

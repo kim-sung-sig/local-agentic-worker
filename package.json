@@ -1,0 +1,18 @@
+{
+  "name": "agentic-worker-nuxt-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^10.7.0",
+    "typescript-eslint": "^8.65.0"
+  }
+}
