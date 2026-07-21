@@ -143,6 +143,14 @@ describe('control_plane.users / memberships / sessions', () => {
     expect(columnNames(controlPlane.memberships)).toEqual(expect.arrayContaining(['id', 'user_id', 'project_id']))
     expect(columnNames(controlPlane.sessions)).toEqual(expect.arrayContaining(['id', 'user_id']))
   })
+
+  it('supports password_hash on users, nullable for future non-password auth methods', () => {
+    const names = columnNames(controlPlane.users)
+    expect(names).toContain('password_hash')
+
+    const column = getTableConfig(controlPlane.users).columns.find((c) => c.name === 'password_hash')
+    expect(column?.notNull).toBe(false)
+  })
 })
 
 describe('control_plane.outbox_events', () => {

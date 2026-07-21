@@ -15,6 +15,13 @@
       "when": 1784619989582,
       "tag": "0001_vengeful_maelstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784643919746,
+      "tag": "0002_absurd_namorita",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "control_plane"."users" ADD COLUMN "password_hash" text;
