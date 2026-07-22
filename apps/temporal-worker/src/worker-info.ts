@@ -1,7 +1,7 @@
 import { ENGINE_NOTIFICATION_REQUESTED_TOPIC } from '@agentic-worker/contracts'
 
-/** Matches the Java engine's `agent.engine.temporal.task-queue` property during the migration. */
-export const TASK_QUEUE = 'agent-worker-engine'
+/** Uses a separate queue while the TypeScript engine runs alongside the Java engine. */
+export const TASK_QUEUE = 'agent-worker-engine-typescript'
 
 export function describeWorker() {
   return {
