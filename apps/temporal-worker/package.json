@@ -9,9 +9,12 @@
   },
   "dependencies": {
     "@agentic-worker/contracts": "*",
+    "@temporalio/client": "^1.20.3",
+    "@temporalio/workflow": "^1.20.3",
     "@temporalio/worker": "^1.20.3"
   },
   "devDependencies": {
+    "@temporalio/testing": "^1.20.3",
     "typescript": "^5.7.2",
     "vitest": "^4.1.10"
   }
