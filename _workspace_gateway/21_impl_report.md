@@ -10,6 +10,8 @@ Files added:
 
 Verification: `cd apps/python-agent-worker && uv run pytest` — 2 passed.
 
+Follow-up validation: empty `credentialRef` and `requestedSourceCommit` now return 422. Focused pytest: 3 passed. Commit: `3045cad`.
+
 Assumptions:
 
 - Fake execution completes synchronously, so cancelling an already-completed execution is idempotent and leaves it completed.
