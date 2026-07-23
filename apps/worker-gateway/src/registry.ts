@@ -14,8 +14,14 @@ export interface RegisteredPythonSession {
   client: PythonSessionClient
 }
 
+export class UpstreamHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Python worker returned ${status}`)
+  }
+}
+
 export class HttpPythonSessionClient implements PythonSessionClient {
-  constructor(private readonly baseUrl: string) {}
+  constructor(private readonly baseUrl: string, private readonly timeoutMs = 5_000) {}
 
   submit(submission: ExecutionSubmission): Promise<{ executionId: string }> {
     return this.request('/v1/executions', { method: 'POST', body: JSON.stringify(submission) }) as Promise<{ executionId: string }>
@@ -38,8 +44,8 @@ export class HttpPythonSessionClient implements PythonSessionClient {
   }
 
   private async request(path: string, init: RequestInit = {}): Promise<unknown> {
-    const response = await fetch(new URL(path, this.baseUrl), { ...init, headers: { accept: 'application/json', ...(init.body ? { 'content-type': 'application/json' } : {}) } })
-    if (!response.ok) throw new Error(`Python worker returned ${response.status}`)
+    const response = await fetch(new URL(path, this.baseUrl), { ...init, signal: AbortSignal.timeout(this.timeoutMs), headers: { accept: 'application/json', ...(init.body ? { 'content-type': 'application/json' } : {}) } })
+    if (!response.ok) throw new UpstreamHttpError(response.status)
     return response.json()
   }
 }

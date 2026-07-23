@@ -18,7 +18,7 @@ function reply(response: ServerResponse, status: number, value: unknown): void {
 
 function error(response: ServerResponse, value: unknown): void {
   if (value instanceof GatewayError) {
-    reply(response, value.code === 'UNAVAILABLE' ? 503 : value.code === 'NOT_FOUND' ? 404 : 400, { code: value.code, retryable: value.retryable })
+    reply(response, value.status ?? (value.code === 'UNAVAILABLE' ? 503 : value.code === 'NOT_FOUND' ? 404 : value.code === 'CONFLICT' ? 409 : 400), { code: value.code, retryable: value.retryable })
     return
   }
   reply(response, 500, { code: 'INTERNAL', retryable: false })

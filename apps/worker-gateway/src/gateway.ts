@@ -1,5 +1,6 @@
 import {
   ExecutionEventSchema,
+  ExecutionSubmissionResultSchema,
   ExecutionStatusSchema,
   ExecutionSubmissionSchema,
   WorkerCapabilitiesSchema,
@@ -8,20 +9,20 @@ import {
   type ExecutionSubmission,
   type WorkerCapabilities,
 } from '@agentic-worker/contracts'
-import { PythonSessionRegistry, type RegisteredPythonSession } from './registry.js'
+import { PythonSessionRegistry, UpstreamHttpError, type RegisteredPythonSession } from './registry.js'
 
-const absolutePath = /^(?:[A-Za-z]:[\\/]|\/|file:\/\/)/i
-const forbiddenKey = /^(?:token|password|secret|apiKey|workspaceRef)$/i
+const absolutePath = /^(?:[A-Za-z]:[\\/]|[\\/]{1,2}|file:\/\/)/i
+const forbiddenKey = /(?:token|password|secret|api[_-]?key|workspace[_-]?ref|authorization)/i
 
 function unsafeResponse(value: unknown): boolean {
   if (typeof value === 'string') return absolutePath.test(value)
   if (Array.isArray(value)) return value.some(unsafeResponse)
-  if (value && typeof value === 'object') return Object.entries(value).some(([key, nested]) => forbiddenKey.test(key) || unsafeResponse(nested))
+  if (value && typeof value === 'object') return Object.entries(value).some(([key, nested]) => forbiddenKey.test(key) || unsafeResponse(key) || unsafeResponse(nested))
   return false
 }
 
 export class GatewayError extends Error {
-  constructor(readonly code: 'INVALID_ARGUMENT' | 'NOT_FOUND' | 'UNAVAILABLE', readonly retryable: boolean) {
+  constructor(readonly code: 'INVALID_ARGUMENT' | 'NOT_FOUND' | 'CONFLICT' | 'UNAVAILABLE', readonly retryable: boolean, readonly status?: number) {
     super(code)
   }
 }
@@ -36,10 +37,11 @@ export class WorkerGateway {
     const parsed = ExecutionSubmissionSchema.safeParse(value)
     if (!parsed.success) throw new GatewayError('INVALID_ARGUMENT', false)
     const session = this.sessionForWorkflow(parsed.data)
-    const result = await this.call(session, () => session.client.submit(parsed.data))
-    if (!result.executionId || unsafeResponse(result)) throw new GatewayError('UNAVAILABLE', true)
-    this.executionSessions.set(result.executionId, session.sessionId)
-    return { executionId: result.executionId }
+    const rawResult = await this.call(session, () => session.client.submit(parsed.data))
+    const result = ExecutionSubmissionResultSchema.safeParse(rawResult)
+    if (!result.success || unsafeResponse(result.data)) throw new GatewayError('UNAVAILABLE', true)
+    this.executionSessions.set(result.data.executionId, session.sessionId)
+    return result.data
   }
 
   async status(executionId: string): Promise<ExecutionStatus> {
@@ -85,7 +87,11 @@ export class WorkerGateway {
     if (!session.healthy()) throw new GatewayError('UNAVAILABLE', true)
     try {
       return await operation()
-    } catch {
+    } catch (caught) {
+      if (caught instanceof UpstreamHttpError) {
+        if (caught.status === 404) throw new GatewayError('NOT_FOUND', false, 404)
+        if (caught.status === 409) throw new GatewayError('CONFLICT', false, 409)
+      }
       throw new GatewayError('UNAVAILABLE', true)
     }
   }
