@@ -47,9 +47,12 @@ export async function registerProject(input: RegisterProjectInput, ownerUserId: 
   })
 }
 
-export async function listProjects(): Promise<ProjectView[]> {
-  const rows = await getDb().select().from(controlPlane.projects)
-  return rows.map(toView)
+export async function listProjects(userId: string): Promise<ProjectView[]> {
+  const rows = await getDb().select({ project: controlPlane.projects })
+    .from(controlPlane.projects)
+    .innerJoin(controlPlane.memberships, eq(controlPlane.memberships.projectId, controlPlane.projects.id))
+    .where(eq(controlPlane.memberships.userId, userId))
+  return rows.map(({ project }) => toView(project))
 }
 
 export async function getProject(projectId: string): Promise<ProjectView | null> {

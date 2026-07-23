@@ -98,11 +98,20 @@ describe('registerProject', () => {
 })
 
 describe('listProjects / getProject', () => {
-  it('lists registered projects and fetches one by id', async () => {
+  it('lists only projects with a membership for the requested user', async () => {
     const created = await registerProject({ name: 'Second', repositoryUri: 'https://github.com/acme/second.git' }, ownerUserId)
+    const [otherUser] = await pool.query(
+      `INSERT INTO control_plane.users (email, name) VALUES ($1, $2) RETURNING id`,
+      ['other@example.com', 'Other'],
+    ).then((result) => result.rows as { id: string }[])
+    if (!otherUser) {
+      throw new Error('listProjects: failed to seed other user')
+    }
+    const hidden = await registerProject({ name: 'Hidden', repositoryUri: 'https://github.com/acme/hidden.git' }, otherUser.id)
 
-    const all = await listProjects()
-    expect(all.some((p) => p.id === created.id)).toBe(true)
+    const projects = await listProjects(ownerUserId)
+    expect(projects.some((project) => project.id === created.id)).toBe(true)
+    expect(projects.some((project) => project.id === hidden.id)).toBe(false)
 
     const fetched = await getProject(created.id)
     expect(fetched?.name).toBe('Second')
