@@ -56,6 +56,10 @@ export const ExecutionStatusSchema = z.object({
   artifactRefs: z.array(z.string()).default([]),
 }).strict()
 
+export const ExecutionSubmissionResultSchema = z.object({
+  executionId: z.string().min(1),
+}).strict()
+
 export const ExecutionEventSchema = z.object({
   executionId: z.string().min(1),
   cursor: z.number().int().positive(),
@@ -72,5 +76,6 @@ export const WorkerCapabilitiesSchema = z.object({
 export type ProjectExecutionSnapshot = z.infer<typeof ProjectExecutionSnapshotSchema>
 export type ExecutionSubmission = z.infer<typeof ExecutionSubmissionSchema>
 export type ExecutionStatus = z.infer<typeof ExecutionStatusSchema>
+export type ExecutionSubmissionResult = z.infer<typeof ExecutionSubmissionResultSchema>
 export type ExecutionEvent = z.infer<typeof ExecutionEventSchema>
 export type WorkerCapabilities = z.infer<typeof WorkerCapabilitiesSchema>

@@ -1,7 +1,7 @@
 import type { EngineActivities, ExecutionSubmission, ProjectExecutionSnapshot } from '@agentic-worker/contracts'
 import { describe, expect, it, vi } from 'vitest'
 
-import { GatewayUnavailableError } from '../src/gateway-client.js'
+import { GatewayNonRetryableError, GatewayUnavailableError, HttpGatewayClient } from '../src/gateway-client.js'
 import { createGatewayEngineActivities } from '../src/activities/gateway-engine-activities.js'
 
 const project: ProjectExecutionSnapshot = {
@@ -13,6 +13,36 @@ const project: ProjectExecutionSnapshot = {
 }
 
 const localActivities = {} as EngineActivities
+const submission: ExecutionSubmission = {
+  contractVersion: 'agent-worker/v1', idempotencyKey: 'run-1:QA:1:1', workflowRunId: 'run-1', stage: 'QA', attemptNumber: 1, stageExecutionGeneration: 1, adapterId: 'fake-agent', mode: 'READ', project,
+}
+
+describe('HttpGatewayClient', () => {
+  it.each([
+    [400, 'INVALID_ARGUMENT'],
+    [404, 'NOT_FOUND'],
+  ])('makes Gateway %i %s responses non-retryable', async (status, code) => {
+    const client = new HttpGatewayClient('http://gateway', vi.fn(async () => new Response(JSON.stringify({ code, retryable: false }), { status })))
+
+    await expect(client.submit(submission)).rejects.toBeInstanceOf(GatewayNonRetryableError)
+    await expect(client.submit(submission)).rejects.toMatchObject({ code, retryable: false, nonRetryable: true })
+  })
+
+  it('keeps Gateway UNAVAILABLE retryable even with an empty error response', async () => {
+    const client = new HttpGatewayClient('http://gateway', vi.fn(async () => new Response('', { status: 503 })))
+
+    await expect(client.submit(submission)).rejects.toBeInstanceOf(GatewayUnavailableError)
+  })
+
+  it('rejects malformed successful submit, status, and event responses as unavailable', async () => {
+    const response = vi.fn(async () => new Response(JSON.stringify({}), { status: 200 }))
+    const client = new HttpGatewayClient('http://gateway', response)
+
+    await expect(client.submit(submission)).rejects.toBeInstanceOf(GatewayUnavailableError)
+    await expect(client.status('execution-1')).rejects.toBeInstanceOf(GatewayUnavailableError)
+    await expect(client.events('execution-1')).rejects.toBeInstanceOf(GatewayUnavailableError)
+  })
+})
 
 describe('Gateway engine activities', () => {
   it('submits safe intake work to Gateway without workspace or local paths', async () => {

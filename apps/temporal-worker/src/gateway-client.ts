@@ -1,10 +1,14 @@
 import {
+  ExecutionEventSchema,
+  ExecutionSubmissionResultSchema,
   ExecutionStatusSchema,
   ExecutionSubmissionSchema,
   type ExecutionEvent,
   type ExecutionStatus,
   type ExecutionSubmission,
 } from '@agentic-worker/contracts'
+import { ApplicationFailure } from '@temporalio/activity'
+import { z } from 'zod'
 
 export class GatewayUnavailableError extends Error {
   readonly code = 'UNAVAILABLE'
@@ -12,6 +16,14 @@ export class GatewayUnavailableError extends Error {
 
   constructor() {
     super('UNAVAILABLE')
+  }
+}
+
+export class GatewayNonRetryableError extends ApplicationFailure {
+  readonly retryable = false
+
+  constructor(readonly code: string) {
+    super(code, `Gateway${code}`, true)
   }
 }
 
@@ -26,16 +38,16 @@ export class HttpGatewayClient implements GatewayClient {
 
   async submit(submission: ExecutionSubmission): Promise<{ executionId: string }> {
     ExecutionSubmissionSchema.parse(submission)
-    return this.call('/v1/executions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(submission) }) as Promise<{ executionId: string }>
+    return validate(ExecutionSubmissionResultSchema, await this.call('/v1/executions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(submission) }))
   }
 
   async status(executionId: string): Promise<ExecutionStatus> {
-    return ExecutionStatusSchema.parse(await this.call(`/v1/executions/${encodeURIComponent(executionId)}`))
+    return validate(ExecutionStatusSchema, await this.call(`/v1/executions/${encodeURIComponent(executionId)}`))
   }
 
   async events(executionId: string, after = 0): Promise<ExecutionEvent[]> {
     const value = await this.call(`/v1/executions/${encodeURIComponent(executionId)}/events?after=${after}`)
-    return value as ExecutionEvent[]
+    return validate(ExecutionEventSchema.array(), value)
   }
 
   private async call(path: string, init?: RequestInit): Promise<unknown> {
@@ -45,13 +57,32 @@ export class HttpGatewayClient implements GatewayClient {
     } catch {
       throw new GatewayUnavailableError()
     }
-    const value: unknown = await response.json()
-    if (response.status === 503 && isUnavailable(value)) throw new GatewayUnavailableError()
-    if (!response.ok) throw Object.assign(new Error(`Gateway request failed: ${response.status}`), value)
+    let value: unknown
+    try {
+      value = await response.json()
+    } catch {
+      if (response.status === 503 || response.ok) throw new GatewayUnavailableError()
+      throw new GatewayNonRetryableError('INVALID_GATEWAY_RESPONSE')
+    }
+    if (!response.ok) throwGatewayError(response.status, value)
     return value
   }
 }
 
-function isUnavailable(value: unknown): value is { code: 'UNAVAILABLE'; retryable: true } {
-  return Boolean(value && typeof value === 'object' && (value as { code?: unknown }).code === 'UNAVAILABLE' && (value as { retryable?: unknown }).retryable === true)
+const GatewayErrorSchema = z.object({ code: z.string().min(1), retryable: z.boolean() }).strict()
+
+function throwGatewayError(status: number, value: unknown): never {
+  const parsed = GatewayErrorSchema.safeParse(value)
+  if (parsed.success) {
+    if (parsed.data.retryable && parsed.data.code === 'UNAVAILABLE') throw new GatewayUnavailableError()
+    if (!parsed.data.retryable) throw new GatewayNonRetryableError(parsed.data.code)
+  }
+  if (status === 503) throw new GatewayUnavailableError()
+  throw new GatewayNonRetryableError('INVALID_GATEWAY_RESPONSE')
+}
+
+function validate<T>(schema: z.ZodType<T>, value: unknown): T {
+  const parsed = schema.safeParse(value)
+  if (!parsed.success) throw new GatewayUnavailableError()
+  return parsed.data
 }
