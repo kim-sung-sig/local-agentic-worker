@@ -2,6 +2,8 @@
 
 Project-wide development principles and conventions for the Chat Platform.
 
+> **SSoT / Walk**: 도메인 능력의 진실원과 기능 작업공간 규약은 [SSOT.md](SSOT.md)를 따른다. 도메인 인덱스는 루트 [docs/DOMAIN.md](../DOMAIN.md).
+
 ---
 
 ## Core Principles
