@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ExecutionSubmission, WorkerCapabilities } from '@agentic-worker/contracts'
 import { GatewayError, WorkerGateway } from '../src/gateway.js'
-import { PythonSessionRegistry, type RegisteredPythonSession } from '../src/registry.js'
+import { HttpPythonSessionClient, PythonSessionRegistry, type RegisteredPythonSession } from '../src/registry.js'
 
 const submission = (workflowRunId: string): ExecutionSubmission => ({
   contractVersion: 'agent-worker/v1', idempotencyKey: `${workflowRunId}:QA:1:1`, workflowRunId, stage: 'QA', attemptNumber: 1, stageExecutionGeneration: 1, adapterId: 'fake-agent', mode: 'READ',
@@ -56,5 +56,29 @@ describe('WorkerGateway', () => {
     const registry = new PythonSessionRegistry(); const first = session('first'); registry.register(first)
     await expect(new WorkerGateway(registry).submit({ ...submission('run-1'), workspaceRef: 'C:\\secret' })).rejects.toEqual(new GatewayError('INVALID_ARGUMENT', false))
     expect(first.client.submit).not.toHaveBeenCalled()
+  })
+
+  it('rejects unsafe nested worker response data before proxying it', async () => {
+    const registry = new PythonSessionRegistry(); const first = session('first'); registry.register(first)
+    vi.mocked(first.client.events).mockResolvedValueOnce([{ executionId: 'first-execution', cursor: 1, type: 'completed', data: { workspaceRef: 'C:\\secret' } }])
+    const gateway = new WorkerGateway(registry); const accepted = await gateway.submit(submission('run-1'))
+    await expect(gateway.events(accepted.executionId)).rejects.toMatchObject({ code: 'UNAVAILABLE', retryable: true })
+  })
+
+  it('calls the Python Worker v1 HTTP paths and returns its JSON', async () => {
+    const requests: Array<[string, RequestInit | undefined]> = []
+    const fetchMock = vi.fn(async (url: URL | RequestInfo, init?: RequestInit) => {
+      requests.push([`${url}`, init])
+      return new Response(JSON.stringify({ executionId: 'execution-1' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const client = new HttpPythonSessionClient('http://python-worker:8000')
+    await expect(client.submit(submission('run-1'))).resolves.toEqual({ executionId: 'execution-1' })
+    await client.status('execution 1'); await client.events('execution 1', 4); await client.cancel('execution 1'); await client.capabilities()
+    expect(requests.map(([url, init]) => [url, init?.method ?? 'GET'])).toEqual([
+      ['http://python-worker:8000/v1/executions', 'POST'], ['http://python-worker:8000/v1/executions/execution%201', 'GET'], ['http://python-worker:8000/v1/executions/execution%201/events?after=4', 'GET'], ['http://python-worker:8000/v1/executions/execution%201:cancel', 'POST'], ['http://python-worker:8000/v1/capabilities', 'GET'],
+    ])
+    expect(requests[0][1]?.body).toBe(JSON.stringify(submission('run-1')))
+    vi.unstubAllGlobals()
   })
 })

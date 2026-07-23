@@ -14,6 +14,36 @@ export interface RegisteredPythonSession {
   client: PythonSessionClient
 }
 
+export class HttpPythonSessionClient implements PythonSessionClient {
+  constructor(private readonly baseUrl: string) {}
+
+  submit(submission: ExecutionSubmission): Promise<{ executionId: string }> {
+    return this.request('/v1/executions', { method: 'POST', body: JSON.stringify(submission) }) as Promise<{ executionId: string }>
+  }
+
+  status(executionId: string): Promise<ExecutionStatus> {
+    return this.request(`/v1/executions/${encodeURIComponent(executionId)}`) as Promise<ExecutionStatus>
+  }
+
+  events(executionId: string, after: number): Promise<ExecutionEvent[]> {
+    return this.request(`/v1/executions/${encodeURIComponent(executionId)}/events?after=${after}`) as Promise<ExecutionEvent[]>
+  }
+
+  cancel(executionId: string): Promise<ExecutionStatus> {
+    return this.request(`/v1/executions/${encodeURIComponent(executionId)}:cancel`, { method: 'POST' }) as Promise<ExecutionStatus>
+  }
+
+  capabilities(): Promise<WorkerCapabilities> {
+    return this.request('/v1/capabilities') as Promise<WorkerCapabilities>
+  }
+
+  private async request(path: string, init: RequestInit = {}): Promise<unknown> {
+    const response = await fetch(new URL(path, this.baseUrl), { ...init, headers: { accept: 'application/json', ...(init.body ? { 'content-type': 'application/json' } : {}) } })
+    if (!response.ok) throw new Error(`Python worker returned ${response.status}`)
+    return response.json()
+  }
+}
+
 export class PythonSessionRegistry {
   private readonly sessions = new Map<string, RegisteredPythonSession>()
   private nextSession = 0
