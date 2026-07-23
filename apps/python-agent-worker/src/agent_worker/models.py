@@ -32,6 +32,10 @@ class ProjectExecutionSnapshot(BaseModel):
     @model_validator(mode="after")
     def remote_repository(self):
         uri = urlparse(self.repositoryUri)
+        try:
+            uri.port
+        except ValueError:
+            raise ValueError("repositoryUri must be a credential-free remote repository URI") from None
         if uri.scheme == "file" or not uri.scheme or not uri.netloc or uri.username or uri.password or uri.query or uri.fragment:
             raise ValueError("repositoryUri must be a credential-free remote repository URI")
         return self

@@ -137,6 +137,13 @@ def test_submission_requires_nullable_snapshot_fields(postgres_url):
             assert client.post("/v1/executions", json=invalid).status_code == 422
 
 
+def test_submission_rejects_invalid_repository_port_at_http_boundary(postgres_url):
+    invalid = payload("run-invalid-port:QA:1:1")
+    invalid["project"]["repositoryUri"] = "https://github.com:invalid/repository.git"
+    with TestClient(create_app(postgres_url)) as client:
+        assert client.post("/v1/executions", json=invalid).status_code == 422
+
+
 def test_worker_capabilities_reject_empty_adapter_id():
     with pytest.raises(Exception):
         WorkerCapabilities.model_validate({"workerId": "worker", "adapterIds": [""], "modes": ["READ"]})
@@ -149,6 +156,7 @@ def test_worker_capabilities_reject_empty_adapter_id():
         lambda value: value["project"].update(repositoryUri="https://user:password@github.com/example/repository.git"),
         lambda value: value["project"].update(repositoryUri="https://github.com/example/repository.git?token=x"),
         lambda value: value["project"].update(repositoryUri="https://github.com/example/repository.git#secret"),
+        lambda value: value["project"].update(repositoryUri="https://github.com:invalid/repository.git"),
         lambda value: value.update(adapterId=""),
         lambda value: value.update(attemptNumber="1"),
         lambda value: value.update(attemptNumber=1.0),
