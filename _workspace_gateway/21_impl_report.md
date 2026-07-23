@@ -16,4 +16,4 @@ Assumptions:
 - `fake-agent` is the only supported adapter in this slice; capability reporting advertises that deterministic fake.
 - SQLite is the durable source for execution identity, status, and ordered events; no runner, Git, or workspace access occurs.
 
-Commit: pending
+Commit: 9bcd9cf (amended below to record this report)
