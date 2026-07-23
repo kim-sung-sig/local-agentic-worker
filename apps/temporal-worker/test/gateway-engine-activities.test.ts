@@ -1,8 +1,12 @@
 import type { EngineActivities, ExecutionSubmission, ProjectExecutionSnapshot } from '@agentic-worker/contracts'
+import type { AddressInfo } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
 
 import { GatewayNonRetryableError, GatewayUnavailableError, HttpGatewayClient } from '../src/gateway-client.js'
 import { createGatewayEngineActivities } from '../src/activities/gateway-engine-activities.js'
+import { WorkerGateway } from '../../worker-gateway/src/gateway.js'
+import { createGatewayHttpServer } from '../../worker-gateway/src/http-server.js'
+import { PythonSessionRegistry, type RegisteredPythonSession } from '../../worker-gateway/src/registry.js'
 
 const project: ProjectExecutionSnapshot = {
   projectId: 'project-1',
@@ -15,6 +19,16 @@ const project: ProjectExecutionSnapshot = {
 const localActivities = {} as EngineActivities
 const submission: ExecutionSubmission = {
   contractVersion: 'agent-worker/v1', idempotencyKey: 'run-1:QA:1:1', workflowRunId: 'run-1', stage: 'QA', attemptNumber: 1, stageExecutionGeneration: 1, adapterId: 'fake-agent', mode: 'READ', project,
+}
+
+async function withGateway(gateway: WorkerGateway, run: (url: string) => Promise<void>): Promise<void> {
+  const server = createGatewayHttpServer(gateway)
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  try {
+    await run(`http://127.0.0.1:${(server.address() as AddressInfo).port}`)
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+  }
 }
 
 describe('HttpGatewayClient', () => {
@@ -45,8 +59,45 @@ describe('HttpGatewayClient', () => {
 })
 
 describe('Gateway engine activities', () => {
+  it('crosses the Gateway HTTP boundary with a sticky safe submission and retryable assigned-session outage', async () => {
+    let healthy = true
+    const events = [
+      { executionId: 'intake-1', cursor: 1, type: 'accepted' as const, data: {} },
+      { executionId: 'intake-1', cursor: 2, type: 'running' as const, data: {} },
+      { executionId: 'intake-1', cursor: 3, type: 'completed' as const, data: {} },
+    ]
+    const first: RegisteredPythonSession = {
+      sessionId: 'postgres-worker', healthy: () => healthy,
+      client: {
+        submit: vi.fn(async (value: ExecutionSubmission) => ({ executionId: value.stage === 'INTAKE' ? 'intake-1' : 'qa-1' })),
+        status: vi.fn(async (executionId: string) => ({ executionId, status: 'COMPLETED' as const, terminal: true, artifactRefs: [] })),
+        events: vi.fn(async () => events),
+        cancel: vi.fn(),
+        capabilities: vi.fn(),
+      },
+    }
+    const second: RegisteredPythonSession = {
+      ...first, sessionId: 'other-worker', client: { ...first.client, submit: vi.fn() },
+    }
+    const registry = new PythonSessionRegistry(); registry.register(first); registry.register(second)
+
+    await withGateway(new WorkerGateway(registry), async (url) => {
+      const client = new HttpGatewayClient(url)
+      const activities = createGatewayEngineActivities({ gateway: client, project, localActivities })
+      await activities.assessTicket({ metadata: { workflowRunId: 'run-smoke', stage: 'INTAKE', attemptNumber: 1, version: 1 }, ticketId: 'ticket-1', rawSpecification: 'C:\\private\\spec.md', version: 1 })
+
+      const outbound = vi.mocked(first.client.submit).mock.calls[0][0]
+      expect(JSON.stringify(outbound)).not.toMatch(/workspaceRef|[A-Za-z]:\\\\|file:/i)
+      await expect(client.events('intake-1')).resolves.toEqual(events)
+
+      healthy = false
+      await expect(client.submit({ ...submission, workflowRunId: 'run-smoke', idempotencyKey: 'run-smoke:QA:1:1' })).rejects.toBeInstanceOf(GatewayUnavailableError)
+      expect(second.client.submit).not.toHaveBeenCalled()
+    })
+  })
+
   it('submits safe intake work to Gateway without workspace or local paths', async () => {
-    const submit = vi.fn(async (_submission: ExecutionSubmission) => ({ executionId: 'execution-1' }))
+    const submit = vi.fn(async (submission: ExecutionSubmission) => { void submission; return { executionId: 'execution-1' } })
     const gateway = {
       submit,
       status: vi.fn(async () => ({ executionId: 'execution-1', status: 'COMPLETED' as const, terminal: true, artifactRefs: ['intake-1'] })),
@@ -70,7 +121,7 @@ describe('Gateway engine activities', () => {
 
   it('propagates retryable Gateway unavailability', async () => {
     const gateway = {
-      submit: vi.fn(async (_submission: ExecutionSubmission) => { throw new GatewayUnavailableError() }),
+      submit: vi.fn(async (submission: ExecutionSubmission) => { void submission; throw new GatewayUnavailableError() }),
       status: vi.fn(),
       events: vi.fn(),
     }
@@ -80,7 +131,7 @@ describe('Gateway engine activities', () => {
   })
 
   it('uses a new generation for a new execution of the same stage', async () => {
-    const submit = vi.fn(async (_submission: ExecutionSubmission) => ({ executionId: 'execution-1' }))
+    const submit = vi.fn(async (submission: ExecutionSubmission) => { void submission; return { executionId: 'execution-1' } })
     const gateway = { submit, status: vi.fn(async () => ({ executionId: 'execution-1', status: 'COMPLETED' as const, terminal: true, artifactRefs: [] })), events: vi.fn(async () => []) }
     const activities = createGatewayEngineActivities({ gateway, project, localActivities })
     const request = { metadata: { workflowRunId: 'run-1', stage: 'PLANNING' as const, attemptNumber: 1, version: 1 }, refinedSpecification: 'safe', version: 1 }
@@ -93,7 +144,7 @@ describe('Gateway engine activities', () => {
   })
 
   it('reuses the generation when Temporal retries the same activity execution', async () => {
-    const submit = vi.fn(async (_submission: ExecutionSubmission) => ({ executionId: 'execution-1' }))
+    const submit = vi.fn(async (submission: ExecutionSubmission) => { void submission; return { executionId: 'execution-1' } })
     const gateway = { submit, status: vi.fn(async () => ({ executionId: 'execution-1', status: 'COMPLETED' as const, terminal: true, artifactRefs: [] })), events: vi.fn(async () => []) }
     const activities = createGatewayEngineActivities({ gateway, project, localActivities, activityId: () => 'temporal-activity-1' })
     const request = { metadata: { workflowRunId: 'run-1', stage: 'PLANNING' as const, attemptNumber: 1, version: 1 }, refinedSpecification: 'safe', version: 1 }
