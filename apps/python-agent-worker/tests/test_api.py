@@ -1,6 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi.testclient import TestClient
 
 from agent_worker.app import create_app
+from agent_worker.ledger import Ledger
+from agent_worker.models import Submission
 
 
 def payload(key: str) -> dict:
@@ -45,6 +49,18 @@ def test_duplicate_submission_reuses_execution_and_events_after_reopen(tmp_path)
         ]
 
 
+def test_concurrent_duplicate_submission_creates_one_execution_and_three_events(tmp_path):
+    ledger = Ledger(tmp_path / "worker.sqlite3")
+    submission = Submission.model_validate(payload("run-concurrent:QA:1:1"))
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        execution_ids = list(executor.map(lambda _: ledger.submit(submission), range(8)))
+    assert len(set(execution_ids)) == 1
+    assert [(event["cursor"], event["type"]) for event in ledger.events(execution_ids[0], 0)] == [
+        (1, "accepted"), (2, "running"), (3, "completed")
+    ]
+    ledger.close()
+
+
 def test_execution_status_cancel_capabilities_and_unsafe_input(tmp_path):
     with TestClient(create_app(tmp_path / "worker.sqlite3")) as client:
         created = client.post("/v1/executions", json=payload("run-2:QA:1:1")).json()
@@ -56,7 +72,9 @@ def test_execution_status_cancel_capabilities_and_unsafe_input(tmp_path):
             "terminal": True,
             "artifactRefs": [],
         }
-        assert client.post(f"/v1/executions/{execution_id}:cancel").status_code == 200
+        cancelled = client.post(f"/v1/executions/{execution_id}:cancel")
+        assert cancelled.status_code == 409
+        assert cancelled.json()["detail"] == "cancellation unsupported for synchronous fake executions"
         assert client.get("/v1/capabilities").json() == {
             "workerId": "python-agent-worker",
             "adapterIds": ["fake-agent"],
@@ -65,6 +83,10 @@ def test_execution_status_cancel_capabilities_and_unsafe_input(tmp_path):
         unsafe = payload("run-3:QA:1:1")
         unsafe["workspaceRef"] = "C:\\\\secret"
         assert client.post("/v1/executions", json=unsafe).status_code == 422
+        for local_path in ("\\\\server\\share", "\\temp"):
+            unsafe = payload("run-3:QA:1:1")
+            unsafe["project"]["baseBranch"] = local_path
+            assert client.post("/v1/executions", json=unsafe).status_code == 422
 
 
 def test_submission_rejects_empty_optional_project_references(tmp_path):

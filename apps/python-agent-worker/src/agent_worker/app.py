@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
@@ -11,7 +12,13 @@ def create_app(state_path: Path | None = None) -> FastAPI:
     path = state_path or Path(os.environ.get("WORKER_STATE_PATH", Path(__file__).with_name("worker-state.sqlite3")))
     path.parent.mkdir(parents=True, exist_ok=True)
     ledger = Ledger(path)
-    app = FastAPI()
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        yield
+        ledger.close()
+
+    app = FastAPI(lifespan=lifespan)
 
     @app.post("/v1/executions")
     def submit(submission: Submission):
@@ -32,10 +39,9 @@ def create_app(state_path: Path | None = None) -> FastAPI:
 
     @app.post("/v1/executions/{execution_id}:cancel")
     def cancel(execution_id: str):
-        result = ledger.cancel(execution_id)
-        if not result:
+        if not ledger.status(execution_id):
             raise HTTPException(404, "execution not found")
-        return result
+        raise HTTPException(409, "cancellation unsupported for synchronous fake executions")
 
     @app.get("/v1/capabilities")
     def capabilities():

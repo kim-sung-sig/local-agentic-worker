@@ -12,7 +12,7 @@ def _unsafe(value: object, key: str = "") -> bool:
     if key.lower() in _FORBIDDEN_KEYS:
         return True
     if isinstance(value, str):
-        return value.startswith(("/", "file://")) or (len(value) > 2 and value[1] == ":" and value[2] in "\\\\/")
+        return value.startswith(("/", "\\", "file://")) or (len(value) > 2 and value[1] == ":" and value[2] in "\\\\/")
     if isinstance(value, dict):
         return any(_unsafe(nested, nested_key) for nested_key, nested in value.items())
     if isinstance(value, list):
