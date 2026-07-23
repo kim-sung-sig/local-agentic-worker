@@ -20,6 +20,8 @@ describe('agent-worker/v1 submission', () => {
     expect(ExecutionSubmissionSchema.safeParse({ ...validSubmission, idempotencyKey: 'wrong' }).success).toBe(false)
     expect(ExecutionSubmissionSchema.safeParse({ ...validSubmission, project: { ...validSubmission.project, repositoryUri: 'file:///C:/secret' } }).success).toBe(false)
     expect(ExecutionSubmissionSchema.safeParse({ ...validSubmission, project: { ...validSubmission.project, repositoryUri: 'https://token:password@github.com/acme/project.git' } }).success).toBe(false)
+    expect(ExecutionSubmissionSchema.safeParse({ ...validSubmission, project: { ...validSubmission.project, baseBranch: '\\\\server\\share' } }).success).toBe(false)
+    expect(ExecutionSubmissionSchema.safeParse({ ...validSubmission, project: { ...validSubmission.project, baseBranch: '\\Windows\\secret' } }).success).toBe(false)
   })
 
   it('validates terminal, event, and capabilities fixtures', () => {

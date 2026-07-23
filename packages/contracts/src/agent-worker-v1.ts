@@ -4,7 +4,7 @@ export const AGENT_WORKER_V1 = 'agent-worker/v1' as const
 
 const StageSchema = z.enum(['INTAKE', 'PLANNING', 'IMPLEMENTATION', 'QA'])
 const ModeSchema = z.enum(['READ', 'WRITE'])
-const absolutePath = /^(?:[A-Za-z]:[\\/]|\/|file:\/\/)/i
+const absolutePath = /^(?:[A-Za-z]:[\\/]|[\\/]{1,2}|file:\/\/)/i
 const forbiddenKey = /^(?:token|password|secret|apiKey)$/i
 
 const RemoteRepositoryUriSchema = z.string().url().refine((value) => {

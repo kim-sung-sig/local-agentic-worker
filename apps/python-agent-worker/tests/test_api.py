@@ -144,6 +144,14 @@ def test_submission_rejects_invalid_repository_port_at_http_boundary(postgres_ur
         assert client.post("/v1/executions", json=invalid).status_code == 422
 
 
+def test_submission_rejects_windows_root_paths_at_http_boundary(postgres_url):
+    with TestClient(create_app(postgres_url)) as client:
+        for base_branch in (r"\\server\share", r"\Windows\secret"):
+            invalid = payload("run-windows-path:QA:1:1")
+            invalid["project"]["baseBranch"] = base_branch
+            assert client.post("/v1/executions", json=invalid).status_code == 422
+
+
 def test_worker_capabilities_reject_empty_adapter_id():
     with pytest.raises(Exception):
         WorkerCapabilities.model_validate({"workerId": "worker", "adapterIds": [""], "modes": ["READ"]})
@@ -171,6 +179,8 @@ def test_worker_capabilities_reject_empty_adapter_id():
         lambda value: value["project"].update(baseBranch="/absolute/path"),
         lambda value: value["project"].update(baseBranch="file://local"),
         lambda value: value["project"].update(baseBranch=r"C:\\local"),
+        lambda value: value["project"].update(baseBranch=r"\\server\share"),
+        lambda value: value["project"].update(baseBranch=r"\Windows\secret"),
         lambda value: value.update(idempotencyKey="not-the-formula"),
     ],
 )

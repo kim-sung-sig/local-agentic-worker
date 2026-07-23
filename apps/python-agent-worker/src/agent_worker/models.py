@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, Strict
 
 CONTRACT_VERSION = "agent-worker/v1"
 _FORBIDDEN_KEY = re.compile(r"^(token|password|secret|apiKey)$", re.IGNORECASE)
-_ABSOLUTE_PATH = re.compile(r"^(?:[A-Za-z]:[\\/]|/|file://)", re.IGNORECASE)
+_ABSOLUTE_PATH = re.compile(r"^(?:[A-Za-z]:[\\/]|[\\/]{1,2}|file://)", re.IGNORECASE)
 
 
 def _unsafe(value: object) -> bool:
