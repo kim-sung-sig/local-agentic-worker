@@ -65,3 +65,11 @@ def test_execution_status_cancel_capabilities_and_unsafe_input(tmp_path):
         unsafe = payload("run-3:QA:1:1")
         unsafe["workspaceRef"] = "C:\\\\secret"
         assert client.post("/v1/executions", json=unsafe).status_code == 422
+
+
+def test_submission_rejects_empty_optional_project_references(tmp_path):
+    with TestClient(create_app(tmp_path / "worker.sqlite3")) as client:
+        for field in ("credentialRef", "requestedSourceCommit"):
+            invalid = payload("run-4:QA:1:1")
+            invalid["project"][field] = ""
+            assert client.post("/v1/executions", json=invalid).status_code == 422

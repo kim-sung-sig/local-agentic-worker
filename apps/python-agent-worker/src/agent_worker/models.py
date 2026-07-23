@@ -26,8 +26,8 @@ class Project(BaseModel):
     projectId: str = Field(min_length=1)
     repositoryUri: str = Field(min_length=1)
     baseBranch: str = Field(min_length=1)
-    credentialRef: str | None
-    requestedSourceCommit: str | None
+    credentialRef: str | None = Field(min_length=1)
+    requestedSourceCommit: str | None = Field(min_length=1)
 
     @model_validator(mode="after")
     def remote_repository(self):
