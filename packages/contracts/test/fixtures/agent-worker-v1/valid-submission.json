@@ -1,0 +1,1 @@
+{"contractVersion":"agent-worker/v1","idempotencyKey":"run-1:QA:2:1","workflowRunId":"run-1","stage":"QA","attemptNumber":2,"stageExecutionGeneration":1,"adapterId":"codex-cli-python","mode":"READ","project":{"projectId":"project-1","repositoryUri":"https://github.com/acme/project.git","baseBranch":"main","credentialRef":"credential-1","requestedSourceCommit":null}}
