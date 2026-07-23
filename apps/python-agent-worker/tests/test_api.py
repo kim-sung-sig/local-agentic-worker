@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from agent_worker.app import create_app
 from agent_worker.ledger import Ledger
-from agent_worker.models import Submission
+from agent_worker.models import Submission, WorkerCapabilities
 
 
 def payload(key: str) -> dict:
@@ -127,6 +127,19 @@ def test_missing_database_url_fails_on_startup(monkeypatch):
     with pytest.raises(RuntimeError, match="WORKER_DATABASE_URL"):
         with TestClient(create_app()):
             pass
+
+
+def test_submission_requires_nullable_snapshot_fields(postgres_url):
+    with TestClient(create_app(postgres_url)) as client:
+        for field in ("credentialRef", "requestedSourceCommit"):
+            invalid = payload("run-required:QA:1:1")
+            del invalid["project"][field]
+            assert client.post("/v1/executions", json=invalid).status_code == 422
+
+
+def test_worker_capabilities_reject_empty_adapter_id():
+    with pytest.raises(Exception):
+        WorkerCapabilities.model_validate({"workerId": "worker", "adapterIds": [""], "modes": ["READ"]})
 
 
 @pytest.mark.parametrize(

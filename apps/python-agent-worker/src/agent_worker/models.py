@@ -1,5 +1,5 @@
 import re
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, model_validator
@@ -26,8 +26,8 @@ class ProjectExecutionSnapshot(BaseModel):
     projectId: StrictStr = Field(min_length=1)
     repositoryUri: StrictStr = Field(min_length=1)
     baseBranch: StrictStr = Field(min_length=1)
-    credentialRef: StrictStr | None = Field(default=None, min_length=1)
-    requestedSourceCommit: StrictStr | None = Field(default=None, min_length=1)
+    credentialRef: StrictStr | None = Field(min_length=1)
+    requestedSourceCommit: StrictStr | None = Field(min_length=1)
 
     @model_validator(mode="after")
     def remote_repository(self):
@@ -88,7 +88,7 @@ class WorkerCapabilities(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     workerId: StrictStr = Field(min_length=1)
-    adapterIds: list[StrictStr]
+    adapterIds: list[Annotated[StrictStr, Field(min_length=1)]]
     modes: list[Literal["READ", "WRITE"]]
 
 
