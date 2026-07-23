@@ -12,6 +12,8 @@ Verification: `cd apps/python-agent-worker && uv run pytest` — 2 passed.
 
 Follow-up validation: empty `credentialRef` and `requestedSourceCommit` now return 422. Focused pytest: 3 passed. Commit: `3045cad`.
 
+Quality fixes: SQLite ledger access is serialized; concurrent duplicate submission returns one ID and the durable three-event sequence. Synchronous fake cancellation explicitly returns 409, and UNC/root-relative Windows paths return 422. The app closes its ledger on shutdown. Focused pytest: 4 passed. Commit: `a51a5c0`.
+
 Assumptions:
 
 - Fake execution completes synchronously, so cancelling an already-completed execution is idempotent and leaves it completed.
