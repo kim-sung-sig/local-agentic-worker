@@ -1,58 +1,51 @@
-import json
-import sqlite3
-import threading
-import uuid
 from pathlib import Path
+import uuid
 
-from .models import Submission
+import psycopg
+from psycopg.types.json import Jsonb
+
+from .models import ExecutionSubmission
 
 
 class Ledger:
-    def __init__(self, path: Path):
-        self.connection = sqlite3.connect(path, check_same_thread=False)
-        self.lock = threading.Lock()
-        self.connection.execute("PRAGMA journal_mode=WAL")
-        self.connection.executescript("""
-            CREATE TABLE IF NOT EXISTS executions (
-                execution_id TEXT PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE,
-                status TEXT NOT NULL, artifact_refs TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS events (
-                execution_id TEXT NOT NULL, cursor INTEGER NOT NULL,
-                type TEXT NOT NULL, data TEXT NOT NULL,
-                PRIMARY KEY (execution_id, cursor)
-            );
-        """)
+    def __init__(self, database_url: str):
+        self.connection = psycopg.connect(database_url)
+        migration = Path(__file__).parents[2] / "migrations" / "0001_agent_worker_ledger.sql"
+        with self.connection.transaction():
+            self.connection.execute(migration.read_text(encoding="utf-8"))
 
-    def submit(self, submission: Submission) -> str:
-        with self.lock:
-            row = self.connection.execute("SELECT execution_id FROM executions WHERE idempotency_key = ?", (submission.idempotencyKey,)).fetchone()
-            if row:
-                return row[0]
-            execution_id = str(uuid.uuid4())
-            with self.connection:
-                self.connection.execute(
-                    "INSERT INTO executions VALUES (?, ?, 'COMPLETED', '[]')",
-                    (execution_id, submission.idempotencyKey),
-                )
-                self.connection.executemany(
-                    "INSERT INTO events VALUES (?, ?, ?, '{}')",
-                    [(execution_id, 1, "accepted"), (execution_id, 2, "running"), (execution_id, 3, "completed")],
-                )
-            return execution_id
+    def submit(self, submission: ExecutionSubmission) -> str:
+        execution_id = str(uuid.uuid4())
+        with self.connection.transaction():
+            inserted = self.connection.execute(
+                "INSERT INTO agent_worker.executions (execution_id, idempotency_key, status, artifact_refs) VALUES (%s, %s, 'COMPLETED', %s) ON CONFLICT (idempotency_key) DO NOTHING RETURNING execution_id",
+                (execution_id, submission.idempotencyKey, Jsonb([])),
+            ).fetchone()
+            if inserted:
+                with self.connection.cursor() as cursor:
+                    cursor.executemany(
+                        "INSERT INTO agent_worker.execution_events (execution_id, cursor, type, data) VALUES (%s, %s, %s, %s)",
+                        [(execution_id, 1, "accepted", Jsonb({})), (execution_id, 2, "running", Jsonb({})), (execution_id, 3, "completed", Jsonb({}))],
+                    )
+                return str(inserted[0])
+            return str(self.connection.execute(
+                "SELECT execution_id FROM agent_worker.executions WHERE idempotency_key = %s", (submission.idempotencyKey,)
+            ).fetchone()[0])
 
     def status(self, execution_id: str):
-        with self.lock:
-            row = self.connection.execute("SELECT status, artifact_refs FROM executions WHERE execution_id = ?", (execution_id,)).fetchone()
-            if not row:
-                return None
-            return {"executionId": execution_id, "status": row[0], "terminal": row[0] in {"COMPLETED", "FAILED", "CANCELLED"}, "artifactRefs": json.loads(row[1])}
+        row = self.connection.execute(
+            "SELECT status, artifact_refs FROM agent_worker.executions WHERE execution_id = %s", (execution_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return {"executionId": execution_id, "status": row[0], "terminal": row[0] in {"COMPLETED", "FAILED", "CANCELLED"}, "artifactRefs": row[1]}
 
     def events(self, execution_id: str, after: int):
-        with self.lock:
-            rows = self.connection.execute("SELECT cursor, type, data FROM events WHERE execution_id = ? AND cursor > ? ORDER BY cursor", (execution_id, after)).fetchall()
-            return [{"executionId": execution_id, "cursor": cursor, "type": type_, "data": json.loads(data)} for cursor, type_, data in rows]
+        rows = self.connection.execute(
+            "SELECT cursor, type, data FROM agent_worker.execution_events WHERE execution_id = %s AND cursor > %s ORDER BY cursor",
+            (execution_id, after),
+        ).fetchall()
+        return [{"executionId": execution_id, "cursor": cursor, "type": type_, "data": data} for cursor, type_, data in rows]
 
     def close(self):
-        with self.lock:
-            self.connection.close()
+        self.connection.close()

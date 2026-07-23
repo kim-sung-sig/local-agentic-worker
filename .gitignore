@@ -46,3 +46,5 @@ node_modules/
 
 # Subagent-driven-development scratch workspace (planner/reviewer transcripts, not project docs)
 /_workspace/
+apps/python-agent-worker/**/__pycache__/
+apps/python-agent-worker/worker-state.sqlite3
