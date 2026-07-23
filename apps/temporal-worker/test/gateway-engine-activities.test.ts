@@ -48,4 +48,54 @@ describe('Gateway engine activities', () => {
 
     await expect(activities.planImplementation({ metadata: { workflowRunId: 'run-1', stage: 'PLANNING', attemptNumber: 1, version: 1 }, refinedSpecification: 'safe', version: 1 })).rejects.toMatchObject({ code: 'UNAVAILABLE', retryable: true })
   })
+
+  it('uses a new generation for a new execution of the same stage', async () => {
+    const submit = vi.fn(async (_submission: ExecutionSubmission) => ({ executionId: 'execution-1' }))
+    const gateway = { submit, status: vi.fn(async () => ({ executionId: 'execution-1', status: 'COMPLETED' as const, terminal: true, artifactRefs: [] })), events: vi.fn(async () => []) }
+    const activities = createGatewayEngineActivities({ gateway, project, localActivities })
+    const request = { metadata: { workflowRunId: 'run-1', stage: 'PLANNING' as const, attemptNumber: 1, version: 1 }, refinedSpecification: 'safe', version: 1 }
+
+    await activities.planImplementation(request)
+    await activities.planImplementation(request)
+
+    expect(submit.mock.calls.map(([submission]) => submission.stageExecutionGeneration)).toEqual([1, 2])
+    expect(submit.mock.calls.map(([submission]) => submission.idempotencyKey)).toEqual(['run-1:PLANNING:1:1', 'run-1:PLANNING:1:2'])
+  })
+
+  it('reuses the generation when Temporal retries the same activity execution', async () => {
+    const submit = vi.fn(async (_submission: ExecutionSubmission) => ({ executionId: 'execution-1' }))
+    const gateway = { submit, status: vi.fn(async () => ({ executionId: 'execution-1', status: 'COMPLETED' as const, terminal: true, artifactRefs: [] })), events: vi.fn(async () => []) }
+    const activities = createGatewayEngineActivities({ gateway, project, localActivities, activityId: () => 'temporal-activity-1' })
+    const request = { metadata: { workflowRunId: 'run-1', stage: 'PLANNING' as const, attemptNumber: 1, version: 1 }, refinedSpecification: 'safe', version: 1 }
+
+    await activities.planImplementation(request)
+    await activities.planImplementation(request)
+
+    expect(submit.mock.calls.map(([submission]) => submission.idempotencyKey)).toEqual(['run-1:PLANNING:1:1', 'run-1:PLANNING:1:1'])
+  })
+
+  it('delegates implementation and QA without forwarding their workspace references', async () => {
+    const submit = vi.fn(async (submission: ExecutionSubmission) => ({ executionId: `${submission.stage}-execution` }))
+    const gateway = {
+      submit,
+      status: vi.fn(async (executionId: string) => ({ executionId, status: 'COMPLETED' as const, terminal: true, artifactRefs: [] })),
+      events: vi.fn(async () => []),
+    }
+    const implement = vi.fn()
+    const runQualityAssurance = vi.fn()
+    const activities = createGatewayEngineActivities({ gateway, project, localActivities: { ...localActivities, implement, runQualityAssurance } })
+    const metadata = { workflowRunId: 'run-1', stage: 'IMPLEMENTATION' as const, attemptNumber: 1, version: 1 }
+
+    await expect(activities.implement({ metadata, workspaceRef: { value: 'C:\\private\\workspace', version: 1 }, implementationPlanRef: { value: 'plan-1', kind: 'PLAN', version: 1 }, version: 1 })).resolves.toEqual({
+      implementationArtifactRef: { value: 'IMPLEMENTATION-execution', kind: 'IMPLEMENTATION', version: 1 }, version: 1,
+    })
+    await expect(activities.runQualityAssurance({ metadata: { ...metadata, stage: 'QA' }, workspaceRef: { value: 'C:\\private\\workspace', version: 1 }, implementationArtifactRef: { value: 'C:\\private\\artifact', kind: 'IMPLEMENTATION', version: 1 }, version: 1 })).resolves.toEqual({
+      passed: true, score: 100, reportRef: { value: 'QA-execution', kind: 'QA_REPORT', version: 1 }, version: 1,
+    })
+
+    expect(implement).not.toHaveBeenCalled()
+    expect(runQualityAssurance).not.toHaveBeenCalled()
+    expect(submit.mock.calls.map(([submission]) => submission.stage)).toEqual(['IMPLEMENTATION', 'QA'])
+    expect(JSON.stringify(submit.mock.calls)).not.toMatch(/workspaceRef|[A-Za-z]:\\\\|file:/i)
+  })
 })
