@@ -72,3 +72,13 @@ Deliver the remaining Worker Gateway slice: durable fake Python Agent/QA executi
 - Task order is intentional: Worker API before Gateway, Gateway before Temporal adapter, then cross-boundary proof.
 - No task introduces real runners, worktree ownership, SCM, webhook, or SSE behavior.
 - The only failure policy is retained affinity plus retryable `UNAVAILABLE`.
+
+## Amendment — PostgreSQL-only Worker 1 ledger
+
+This amendment supersedes the original Task 1 SQLite implementation before any further Gateway or Temporal work resumes.
+
+- PostgreSQL is the only ledger store, configured exclusively by `WORKER_DATABASE_URL`; remove SQLite imports, `WORKER_STATE_PATH`, filesystem defaults, and fallbacks.
+- The Python-owned migration creates `agent_worker.executions` (UUID primary key, unique idempotency key, terminal/status JSONB data) and `agent_worker.execution_events` (`execution_id`, monotonic cursor primary key, JSONB event data). It has no FK to `engine` or `control_plane`.
+- Pydantic models must exactly validate the five `agent-worker/v1` contract shapes: strict fields/enums/integers, credential-free remote URI, idempotency formula, and recursive forbidden-key/local-path rejection.
+- Tests use PostgreSQL (`postgres:16-alpine` when Docker is available) to prove migration, duplicate submissions from independent ledgers, restart durability, ordered events, and contract parity. Docker-unavailable database tests are explicitly skipped, never emulated with SQLite.
+- Add only `apps/python-agent-worker/**/__pycache__/` and `apps/python-agent-worker/worker-state.sqlite3` to root `.gitignore`; keep `uv.lock` tracked. Gateway Task 2 remains paused through this correction's developer, spec, and quality reviews.
