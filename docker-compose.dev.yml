@@ -1,28 +1,11 @@
 # Local integration stack for the Worker Gateway slice.
 #
-#   docker compose -f docker-compose.dev.yml up -d                      # ledger Postgres only
-#   docker compose -f docker-compose.dev.yml --profile temporal up -d   # + Temporal server + UI
+#   docker compose -f docker-compose.dev.yml --profile temporal up -d   # Temporal server + UI
 #
 # No real/sensitive credentials are committed here. The values below are
 # throwaway dev defaults for local containers only; override with a .env file
 # or shell environment if desired. Do NOT reuse these anywhere non-local.
 services:
-  # Durable execution/event ledger for the Python Worker (agent_worker schema).
-  postgres:
-    image: postgres:16
-    container_name: agent-worker-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: agent_worker
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_worker"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
-
   # --- Temporal server (profile: temporal) -----------------------------------
   # Metadata store for Temporal itself (separate from the app ledger above).
   temporal-postgresql:
