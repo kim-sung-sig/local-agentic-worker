@@ -9,7 +9,7 @@ from .models import ExecutionSubmission
 
 class Ledger:
     def __init__(self, database_url: str):
-        self.connection = psycopg.connect(database_url)
+        self.connection = psycopg.connect(database_url, autocommit=True)
         migration = Path(__file__).parents[2] / "migrations" / "0001_agent_worker_ledger.sql"
         with self.connection.transaction():
             self.connection.execute(migration.read_text(encoding="utf-8"))

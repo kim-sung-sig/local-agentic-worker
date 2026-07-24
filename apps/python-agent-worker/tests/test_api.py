@@ -122,6 +122,32 @@ def test_postgres_schema_and_concurrent_idempotency(postgres_url):
         ledger_two.close()
 
 
+def test_ledger_write_after_read_is_durable_across_connections(postgres_url):
+    import psycopg
+
+    ledger = Ledger(postgres_url)
+    submission_a = Submission.model_validate(payload("run-durability-a:QA:1:1"))
+    submission_b = Submission.model_validate(payload("run-durability-b:QA:1:1"))
+    try:
+        execution_id_a = ledger.submit(submission_a)
+        # Bare reads under autocommit=False open an implicit transaction that
+        # is never committed; this reproduces that lingering-transaction state.
+        ledger.status(execution_id_a)
+        ledger.events(execution_id_a, 0)
+
+        execution_id_b = ledger.submit(submission_b)
+
+        with psycopg.connect(postgres_url) as other_connection:
+            for execution_id in (execution_id_a, execution_id_b):
+                rows = other_connection.execute(
+                    "SELECT type FROM agent_worker.execution_events WHERE execution_id = %s ORDER BY cursor",
+                    (execution_id,),
+                ).fetchall()
+                assert [row[0] for row in rows] == ["accepted", "running", "completed"]
+    finally:
+        ledger.close()
+
+
 def test_missing_database_url_fails_on_startup(monkeypatch):
     monkeypatch.delenv("WORKER_DATABASE_URL", raising=False)
     with pytest.raises(RuntimeError, match="WORKER_DATABASE_URL"):
