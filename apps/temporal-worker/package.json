@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx watch src/main.ts",
+    "start:worker": "tsx src/main.ts",
+    "integration:run": "tsx src/dev/run-intake-planning.ts"
   },
   "dependencies": {
     "@agentic-worker/contracts": "*",
@@ -15,6 +18,7 @@
   },
   "devDependencies": {
     "@temporalio/testing": "^1.20.3",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^4.1.10"
   }
