@@ -1,12 +1,29 @@
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import planner, workspace
-from .models import ExecutionSubmission
+from .models import ExecutionSubmission, _ABSOLUTE_PATH
 
 _TERMINAL = {"COMPLETED", "FAILED", "CANCELLED"}
+
+# Unanchored variant of models._ABSOLUTE_PATH (which is anchored with `^` to
+# validate whole-field values) so failure-path diagnostics can be scrubbed of
+# absolute host paths / file:// URIs wherever they appear in free-form text,
+# e.g. inside a subprocess's stderr embedded in an exception message.
+_ABSOLUTE_PATH_ANYWHERE = re.compile(_ABSOLUTE_PATH.pattern.lstrip("^") + r'[^\s"\']*', re.IGNORECASE)
+_REDACTED = "[REDACTED]"
+
+
+def _sanitize_error(text: str) -> str:
+    """Redact absolute host paths / file:// URIs from an exception message.
+
+    Keeps a useful diagnostic (the rest of the message) so failures stay
+    debuggable without leaking local filesystem layout across the contract.
+    """
+    return _ABSOLUTE_PATH_ANYWHERE.sub(_REDACTED, text)
 
 
 @dataclass
@@ -56,7 +73,8 @@ class PlanningJobs:
                 job.artifact_refs = [serialized]
             self._append(execution_id, "completed", "COMPLETED", data={"ref": serialized})
         except Exception as exc:  # noqa: BLE001 - surface any failure as a terminal failed event
-            self._append(execution_id, "failed", "FAILED", data={"error": str(exc)})
+            error = f"{type(exc).__name__}: {_sanitize_error(str(exc))}"
+            self._append(execution_id, "failed", "FAILED", data={"error": error})
 
     def _append(self, execution_id: str, event_type: str, status: str, data: dict | None = None) -> None:
         with self._lock:

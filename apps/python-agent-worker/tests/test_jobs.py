@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import time
@@ -133,5 +134,42 @@ def test_status_and_events_are_none_for_unknown_execution(config):
     try:
         assert jobs.status("nope:PLANNING:1:1") is None
         assert jobs.events("nope:PLANNING:1:1", 0) is None
+    finally:
+        jobs.shutdown()
+
+
+@pytest.fixture
+def failing_config(tmp_path):
+    # Agent step fails after a real clone/worktree, writing an absolute-path
+    # / secret-looking string to stderr so we can verify the failed event's
+    # error text is sanitized before it crosses the contract boundary.
+    script = tmp_path / "fake_failing_agent.py"
+    script.write_text(
+        'import sys\n'
+        'sys.stderr.write(r"fatal: C:\\secret\\leak and /etc/shadow and file://x")\n'
+        'sys.exit(1)\n',
+        encoding="utf-8",
+    )
+    return WorkerConfig(workspace_root=tmp_path / "ws", agent_command=f'"{sys.executable}" "{script}"', agent_timeout_seconds=30)
+
+
+def test_failed_event_error_is_sanitized_of_absolute_paths_and_secrets(failing_config, remote):
+    jobs = PlanningJobs(failing_config)
+    try:
+        execution_id = jobs.submit(_submission("run-fail", remote))
+        status = _await_complete(jobs, execution_id)
+        assert status["status"] == "FAILED" and status["terminal"] is True
+
+        events = jobs.events(execution_id, 0)
+        failed_events = [e for e in events if e["type"] == "failed"]
+        assert len(failed_events) == 1
+        serialized = json.dumps(failed_events[0])
+
+        assert "C:\\" not in serialized
+        assert "file://" not in serialized
+        assert "/etc/" not in serialized
+
+        error = failed_events[0]["data"].get("error")
+        assert error  # non-sensitive diagnostic remains, scrubbed but non-empty
     finally:
         jobs.shutdown()
