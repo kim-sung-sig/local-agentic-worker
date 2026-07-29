@@ -6,7 +6,7 @@ action: block
 conditions:
   - field: file_path
     operator: regex_match
-    pattern: (^|[\\/])docs[\\/](superpowers[\\/]plans|01-plan|planning)[\\/].*\\.md$
+    pattern: (^|[\/])docs[\/](superpowers[\/]plans|01-plan|planning)[\/].*\.md$
   - field: new_text
     operator: regex_match
     pattern: (?m)^#\s+

@@ -2,6 +2,15 @@
   "hooks": {
     "PreToolUse": [
       {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/hookify-health.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -23,6 +32,16 @@
       }
     ],
     "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .codex/hooks/hookify-health.py --session-start",
+            "timeout": 10
+          }
+        ]
+      },
       {
         "matcher": "compact",
         "hooks": [

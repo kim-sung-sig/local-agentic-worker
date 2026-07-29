@@ -5,7 +5,7 @@ event: file
 conditions:
   - field: file_path
     operator: regex_match
-    pattern: src[\\/].*main[\\/]java[\\/].*(api|controller)[\\/].*\\.java$
+    pattern: src[\/].*main[\/]java[\/].*(api|controller)[\/].*\.java$
   - field: new_text
     operator: contains
     pattern: '@RequestBody'
