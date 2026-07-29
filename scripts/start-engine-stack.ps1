@@ -181,7 +181,7 @@ Set-Content -Path $env:PLAN_PATH -Value ("# Plan " + $env:WORKFLOW_RUN_ID)
     $gatewayCapabilities = Wait-HttpJson 'http://127.0.0.1:3001/v1/capabilities' { param($value) @($value | Where-Object { $_.workerId -eq 'python-agent-worker' -and $_.adapterIds -contains 'fake-agent' -and $_.modes -contains 'READ' -and $_.modes -contains 'WRITE' }).Count -eq 1 } 'Worker Gateway' $gateway
 
     $temporalDirectory = Join-Path $repoRoot 'apps/temporal-worker'
-    $temporalWorker = Start-LoggedProcess 'temporal-worker' 'node' @('node_modules/tsx/dist/cli.mjs', 'src/main.ts') $temporalDirectory @{ GATEWAY_URL = 'http://127.0.0.1:3001'; TEMPORAL_ADDRESS = '127.0.0.1:7233'; PROJECT_REPOSITORY_URI = "http://127.0.0.1:$gitPort/engine-smoke.git"; PROJECT_BASE_BRANCH = 'main' } $logs
+    $temporalWorker = Start-LoggedProcess 'temporal-worker' 'node' @((Join-Path $repoRoot 'node_modules/tsx/dist/cli.mjs'), 'src/main.ts') $temporalDirectory @{ GATEWAY_URL = 'http://127.0.0.1:3001'; TEMPORAL_ADDRESS = '127.0.0.1:7233'; PROJECT_REPOSITORY_URI = "http://127.0.0.1:$gitPort/engine-smoke.git"; PROJECT_BASE_BRANCH = 'main' } $logs
     $children.Add($temporalWorker)
     Wait-LogText (Join-Path $logs 'temporal-worker.out.log') 'temporal-worker connected:' 'Temporal Worker' $temporalWorker
 
