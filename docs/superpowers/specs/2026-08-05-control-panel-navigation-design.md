@@ -2,7 +2,7 @@
 
 ## Goal
 
-Restore the Control Plane as an operator console: a GitHub-like global sidebar, project and issue workspaces reached by URL, and a non-destructive execution drawer for run context.
+Restore the active Vue/Vite operator console as a GitHub-like control panel: a global sidebar, project and issue workspaces reached by URL, and a non-destructive execution drawer for run context.
 
 ## Confirmed interaction model
 
@@ -18,7 +18,7 @@ The drawer is intentionally not a substitute for an issue route. It cannot own c
 ## Scope
 
 - Replace the current one-item navigation with the confirmed sidebar structure.
-- Improve the shell, dashboard, project page, and issue workspace visual hierarchy using existing Nuxt/Vue/CSS only.
+- Improve the shell, dashboard, project page, and issue workspace visual hierarchy using existing Vue/CSS only.
 - Add an accessible issue execution drawer with phase history and the existing client-side worker mock data.
 - Preserve existing authentication, API calls, route shapes, and recoverable error states.
 - Add focused UI tests for the sidebar and drawer behavior.
@@ -31,16 +31,16 @@ The drawer is intentionally not a substitute for an issue route. It cannot own c
 
 ## Components and state
 
-`app.vue` remains the global shell. It owns sidebar collapse state only. Each route continues to own its API loading/error state.
+`frontend/src/App.vue` remains the global shell. It owns sidebar collapse state only. Each hash route continues to own its API loading/error state.
 
-The issue page owns `executionDrawerOpen`. Opening the drawer displays the existing mock worker phases and activity. Closing uses the close button, Escape, or the backdrop; focus returns to the triggering button. The drawer is marked as a dialog and has an accessible label.
+`frontend/src/components/IssueWorkspace.vue` owns `executionDrawerOpen`, separately from its existing mobile issue-list `drawerOpen`. Opening the drawer displays the existing agent phase data and current activity state. Closing uses the close button, Escape, or the backdrop; focus returns to the triggering button. The drawer is marked as a dialog and has an accessible label.
 
 ## Responsive behavior
 
-Desktop keeps a compact fixed sidebar. At the existing narrow breakpoint, the sidebar becomes a toggleable overlay; route content remains full width. The execution drawer is full-width on narrow screens and right-aligned on larger screens.
+Desktop keeps a compact fixed sidebar. At the existing narrow breakpoint, the sidebar becomes a toggleable overlay; hash-route content remains full width. The execution drawer is full-width on narrow screens and right-aligned on larger screens.
 
 ## Acceptance checks
 
 1. Authenticated users can navigate through the restored sidebar without breaking current routes.
 2. An issue page can open and close the execution drawer with mouse and keyboard, while keeping the detail page in place.
-3. Existing Control Plane tests and type checking pass.
+3. Existing Vite operator-console tests and production build pass.
