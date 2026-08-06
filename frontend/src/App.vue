@@ -1,16 +1,18 @@
 <template>
   <div class="app-shell">
-    <aside class="side-nav">
+    <button class="navigation-toggle" type="button" aria-controls="primary-navigation" :aria-expanded="String(navigationOpen)" aria-label="메뉴 열기" @click="navigationOpen = !navigationOpen">☰</button>
+    <button v-if="navigationOpen" class="navigation-backdrop" type="button" aria-label="메뉴 닫기" @click="navigationOpen = false"></button>
+    <aside id="primary-navigation" class="side-nav" :class="{ 'is-open': navigationOpen }">
       <router-link class="brand" to="/"
         ><span class="brand-mark">◆</span
         ><span>AI 개발 워크벤치</span></router-link
       >
       <nav class="primary-nav" aria-label="주요 메뉴">
-        <router-link to="/" exact>⌂ <span>대시보드</span></router-link>
-        <router-link :to="projectLink" exact
+        <router-link to="/" exact @click="closeNavigation">⌂ <span>대시보드</span></router-link>
+        <router-link :to="projectLink" exact @click="closeNavigation"
           >▤ <span>프로젝트</span></router-link
         >
-        <router-link v-if="issueLink" :to="issueLink" exact
+        <router-link v-if="issueLink" :to="issueLink" exact @click="closeNavigation"
           >◉ <span>이슈</span></router-link
         >
         <button v-else type="button" disabled>◉ <span>이슈</span></button>
@@ -58,6 +60,7 @@
 
 <script>
 export default {
+  data: () => ({ navigationOpen: false }),
   computed: {
     pageTitle() {
       return this.$route.path === "/"
@@ -75,6 +78,11 @@ export default {
       return projectId && issueId
         ? `/projects/${projectId}/issues/${issueId}`
         : null;
+    },
+  },
+  methods: {
+    closeNavigation() {
+      this.navigationOpen = false;
     },
   },
 };

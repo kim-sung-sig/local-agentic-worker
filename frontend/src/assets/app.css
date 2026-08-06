@@ -1012,6 +1012,49 @@ p {
 .issue-rail-backdrop {
   display: none;
 }
+
+.navigation-toggle,
+.navigation-backdrop { display: none; }
+
+.execution-drawer-backdrop,
+.execution-drawer { display: none; }
+
+.execution-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 13;
+  width: 100%;
+  padding: 0;
+  background: #1f232880;
+  border: 0;
+}
+
+.execution-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 14;
+  display: block;
+  width: min(390px, 92vw);
+  height: 100vh;
+  padding: 20px;
+  overflow-y: auto;
+  background: #fff;
+  box-shadow: -12px 0 32px #1f232833;
+}
+
+.execution-drawer > header { display: flex; justify-content: space-between; gap: 12px; }
+.execution-drawer .rail-close { display: inline-block; }
+.issue-workspace { grid-template-columns: 340px minmax(0, 1fr); }
+
+/* GitHub-like control shell: restrained surface colors and clear active navigation. */
+.side-nav { color: #24292f; background: #f6f8fa; box-shadow: 1px 0 #d0d7de; }
+.brand { color: #24292f; border-bottom-color: #d8dee4; }
+.primary-nav a, .secondary-nav a, .primary-nav button { color: #57606a; }
+.primary-nav a.router-link-active, .primary-nav a:first-child { color: #24292f; background: #ddf4ff; }
+.nav-divider { background: #d8dee4; }.recent-projects > div, .recent-projects a, .user-card small { color: #57606a; }
+.user-card { border-color: #d0d7de; }.topbar { color: #24292f; background: #fff; border-bottom: 1px solid #d0d7de; }
+.top-actions button, .global-search, .global-search input { color: #57606a; }.global-search { border-color: #d0d7de; }.global-search input::placeholder { color: #57606a; }
 .workspace-rail {
   position: sticky;
   top: 63px;
@@ -1049,6 +1092,38 @@ p {
 }
 
 @media (max-width: 800px) {
+  .navigation-toggle {
+    position: fixed;
+    top: 11px;
+    left: 12px;
+    z-index: 12;
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    color: #24292f;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+  }
+  .navigation-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: block;
+    width: 100%;
+    padding: 0;
+    background: #1f232880;
+    border: 0;
+  }
+  .side-nav {
+    z-index: 11;
+    display: flex;
+    width: min(280px, 86vw);
+    transform: translateX(-105%);
+    transition: transform 180ms ease;
+  }
+  .side-nav.is-open { transform: translateX(0); }
   .issue-workspace {
     display: block;
     min-height: 0;

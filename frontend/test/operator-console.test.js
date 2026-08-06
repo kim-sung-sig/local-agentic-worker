@@ -3,11 +3,23 @@ import assert from 'node:assert/strict'
 import * as operatorConsole from '../src/lib/operator-console.js'
 import {
   groupIssuesByLane,
+  closeDrawerAfterRoute,
+  shouldCloseExecutionDrawer,
   mergeNotification,
   operatorLanes,
   projectIssueCounts,
   validateDecision,
 } from '../src/lib/operator-console.js'
+
+test('closes the mobile navigation after a route is selected', () => {
+  assert.equal(closeDrawerAfterRoute(true), false)
+  assert.equal(closeDrawerAfterRoute(false), false)
+})
+
+test('closes an execution drawer only for Escape', () => {
+  assert.equal(shouldCloseExecutionDrawer('Escape'), true)
+  assert.equal(shouldCloseExecutionDrawer('Enter'), false)
+})
 
 test('groups every issue into exactly one operator lane', () => {
   const issues = [
