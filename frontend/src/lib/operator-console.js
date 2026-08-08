@@ -41,6 +41,10 @@ export function unreadNotificationCount(items) {
   return items.filter((item) => !item.readAt).length
 }
 
+export const closeDrawerAfterRoute = () => false
+
+export const shouldCloseExecutionDrawer = (key) => key === 'Escape'
+
 export function validateDecision(decision, reason, targetStage) {
   if (decision === 'REJECT' && !targetStage) return { error: '반려 대상 단계를 선택하세요.' }
   if (['REJECT', 'REQUEST_REVISION'].includes(decision) && !reason?.trim()) return { error: '사유를 입력하세요.' }

@@ -70,6 +70,7 @@
             ><span>담당자: 홍길동</span><span>생성일: {{ createdDate }}</span
             ><button type="button">•••</button
             ><button type="button" class="edit-button">이슈 편집</button>
+            <button ref="executionDrawerTrigger" type="button" class="edit-button" @click="openExecutionDrawer">실행 현황</button>
           </div>
           <nav class="detail-tabs">
             <a class="selected">개요</a><a>작업</a><a>코멘트 <small>3</small></a
@@ -132,12 +133,14 @@
           </footer>
         </section>
       </main>
-      <aside class="activity-panel">
+      <button v-if="executionDrawerOpen" class="execution-drawer-backdrop" type="button" aria-label="실행 현황 닫기" @click="closeExecutionDrawer"></button>
+      <aside v-if="executionDrawerOpen" class="activity-panel execution-drawer" role="dialog" aria-modal="true" aria-label="실행 현황">
         <header>
           <div>
             <h2>에이전트 팀 활동</h2>
-            <small class="live-dot">● 실시간</small>
+            <small class="live-dot">● 현재 단계</small>
           </div>
+          <button type="button" class="rail-close" @click="closeExecutionDrawer">닫기</button>
           <button
             class="button button-primary full-button"
             @click="run('develop')"
@@ -183,6 +186,7 @@
 </template>
 <script>
 import { AgentApi, IssueApi, ProjectApi } from "../api";
+import { shouldCloseExecutionDrawer } from "../lib/operator-console";
 const fallbackPlan = `## 목표\n\n문제를 해결할 범위와 완료 기준을 작성하세요.\n\n## 세부 계획\n\n1. 현재 동작과 영향 범위를 확인합니다.\n2. 변경 방향과 검증 방법을 정리합니다.\n3. 검토 후 구현 계획으로 넘깁니다.`;
 const fallbackDesign = `## 기술 변경 사항\n\n- 화면과 API 영향 범위를 정리합니다.\n- 검증 가능한 완료 기준을 추가합니다.\n\n## 영향 범위\n\n- 관련 화면과 API\n- 테스트 및 운영 확인 사항`;
 const labels = {
@@ -207,6 +211,7 @@ export default {
     actionMessage: "",
     decisionMessage: "",
     drawerOpen: false,
+    executionDrawerOpen: false,
     activity: [
       {
         label: "코드 구현",
@@ -254,9 +259,24 @@ export default {
   },
   mounted() {
     this.loadIssue();
+    window.addEventListener("keydown", this.handleKeydown);
+  },
+  beforeUnmount() {
+    window.removeEventListener("keydown", this.handleKeydown);
   },
   watch: { "$route.params.issueId": "loadIssue" },
   methods: {
+    openExecutionDrawer() {
+      this.executionDrawerOpen = true;
+    },
+    closeExecutionDrawer() {
+      if (!this.executionDrawerOpen) return;
+      this.executionDrawerOpen = false;
+      this.$nextTick(() => this.$refs.executionDrawerTrigger?.focus());
+    },
+    handleKeydown(event) {
+      if (shouldCloseExecutionDrawer(event.key)) this.closeExecutionDrawer();
+    },
     async loadIssue() {
       this.loading = true;
       this.error = false;

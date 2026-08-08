@@ -1,13 +1,28 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import * as operatorConsole from '../src/lib/operator-console.js'
 import {
   groupIssuesByLane,
+  closeDrawerAfterRoute,
+  shouldCloseExecutionDrawer,
   mergeNotification,
   operatorLanes,
   projectIssueCounts,
   validateDecision,
 } from '../src/lib/operator-console.js'
+
+const appCss = readFileSync(new URL('../src/assets/app.css', import.meta.url), 'utf8')
+
+test('closes the mobile navigation after a route is selected', () => {
+  assert.equal(closeDrawerAfterRoute(true), false)
+  assert.equal(closeDrawerAfterRoute(false), false)
+})
+
+test('closes an execution drawer only for Escape', () => {
+  assert.equal(shouldCloseExecutionDrawer('Escape'), true)
+  assert.equal(shouldCloseExecutionDrawer('Enter'), false)
+})
 
 test('groups every issue into exactly one operator lane', () => {
   const issues = [
@@ -65,4 +80,12 @@ test('requires a target and reason for rejection decisions', () => {
   assert.deepEqual(validateDecision('REQUEST_REVISION', '', null), { error: '사유를 입력하세요.' })
   assert.deepEqual(validateDecision('REQUEST_REVISION', null, null), { error: '사유를 입력하세요.' })
   assert.deepEqual(validateDecision('APPROVE', '', null), { error: null })
+})
+
+test('hides responsive activity panels without hiding the execution drawer', () => {
+  const hiddenPanelRule = /\.issue-workspace\s+\.activity-panel:not\(\.execution-drawer\)\s*{\s*display:\s*none;\s*}/
+
+  assert.match(appCss, /@media\s*\(max-width:\s*1100px\)[\s\S]*?\.issue-workspace\s+\.activity-panel:not\(\.execution-drawer\)\s*{\s*display:\s*none;\s*}/)
+  assert.match(appCss, /@media\s*\(max-width:\s*1449px\)\s*and\s*\(min-width:\s*801px\)[\s\S]*?\.issue-workspace\s+\.activity-panel:not\(\.execution-drawer\)\s*{\s*display:\s*none;\s*}/)
+  assert.doesNotMatch(appCss.replace(hiddenPanelRule, ''), /\.issue-workspace\s+\.activity-panel\s*{\s*display:\s*none;\s*}/)
 })
