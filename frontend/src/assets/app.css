@@ -938,7 +938,7 @@ p {
   .issue-workspace {
     grid-template-columns: 300px 1fr;
   }
-  .issue-workspace .activity-panel {
+  .issue-workspace .activity-panel:not(.execution-drawer) {
     display: none;
   }
 }
@@ -1083,7 +1083,7 @@ p {
   .issue-workspace {
     grid-template-columns: 320px minmax(0, 1fr);
   }
-  .issue-workspace .activity-panel {
+  .issue-workspace .activity-panel:not(.execution-drawer) {
     display: none;
   }
   .issue-meta {
