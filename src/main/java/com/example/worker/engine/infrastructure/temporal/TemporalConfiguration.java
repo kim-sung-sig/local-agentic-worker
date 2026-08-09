@@ -10,6 +10,7 @@ import com.example.worker.scm.infrastructure.github.GitHubCliSourceControlPlugin
 import io.temporal.client.WorkflowClient;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class TemporalConfiguration {
 
-    @Value("${agent.engine.temporal.task-queue}")
+    @Value("${agent.engine.temporal.task-queue:agent-worker-engine}")
     private String taskQueue;
 
     @Bean
@@ -34,6 +35,10 @@ public class TemporalConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(
+            name = "agent.engine.temporal.worker-enabled",
+            havingValue = "true",
+            matchIfMissing = true)
     public WorkerFactory engineWorkerFactory(WorkflowClient workflowClient, EngineActivitiesImpl engineActivities) {
         WorkerFactory workerFactory = WorkerFactory.newInstance(workflowClient);
         Worker worker = workerFactory.newWorker(taskQueue);
@@ -43,6 +48,10 @@ public class TemporalConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(
+            name = "agent.engine.temporal.worker-enabled",
+            havingValue = "true",
+            matchIfMissing = true)
     public SmartLifecycle engineWorkerLifecycle(WorkerFactory engineWorkerFactory) {
         return new EngineWorkerLifecycle(engineWorkerFactory);
     }

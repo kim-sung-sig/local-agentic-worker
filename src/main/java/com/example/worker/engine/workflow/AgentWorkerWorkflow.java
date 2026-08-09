@@ -10,7 +10,7 @@ import io.temporal.workflow.WorkflowMethod;
 @WorkflowInterface
 public interface AgentWorkerWorkflow {
 
-    @WorkflowMethod
+    @WorkflowMethod(name = "run")
     String run(StartAgentWorkflowRequest request);
 
     @SignalMethod
