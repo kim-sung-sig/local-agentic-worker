@@ -14,7 +14,7 @@ public class AgentWorkerStarter {
     private final String taskQueue;
 
     public AgentWorkerStarter(WorkflowClient workflowClient,
-                              @Value("${agent.engine.temporal.task-queue}") String taskQueue) {
+                              @Value("${agent.engine.temporal.task-queue:agent-worker-engine}") String taskQueue) {
         this.workflowClient = workflowClient;
         this.taskQueue = taskQueue;
     }
