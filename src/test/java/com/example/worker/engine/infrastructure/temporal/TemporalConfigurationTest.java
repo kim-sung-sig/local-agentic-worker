@@ -1,8 +1,10 @@
 package com.example.worker.engine.infrastructure.temporal;
 
 import com.example.worker.engine.infrastructure.activity.EngineActivitiesImpl;
+import com.example.worker.engine.workflow.AgentWorkerWorkflow;
 import io.temporal.client.WorkflowClient;
 import io.temporal.worker.WorkerFactory;
+import io.temporal.workflow.WorkflowMethod;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -52,6 +54,16 @@ class TemporalConfigurationTest {
                     assertThat(context).doesNotHaveBean(WorkerFactory.class);
                     assertThat(context).doesNotHaveBean("engineWorkerLifecycle");
                 });
+    }
+
+    @Test
+    void workflowMethodUsesTypeScriptWorkflowName() throws NoSuchMethodException {
+        WorkflowMethod workflowMethod = AgentWorkerWorkflow.class
+                .getMethod("run", com.example.worker.engine.workflow.StartAgentWorkflowRequest.class)
+                .getAnnotation(WorkflowMethod.class);
+
+        assertThat(workflowMethod).isNotNull();
+        assertThat(workflowMethod.name()).isEqualTo("run");
     }
 
     private static Method workerFactoryMethod() throws NoSuchMethodException {
