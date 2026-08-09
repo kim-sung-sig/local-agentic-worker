@@ -69,7 +69,7 @@ class WorkflowRunControllerTest {
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(
                                 new com.example.worker.engine.api.request.StartWorkflowRequest(
-                                        "ticket-1", "raw spec"))))
+                                        "123e4567-e89b-12d3-a456-426614174000", "raw spec"))))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.workflowRunId").exists())
                 .andExpect(jsonPath("$.currentStage").value("INTAKE"));
@@ -84,6 +84,34 @@ class WorkflowRunControllerTest {
                                 new com.example.worker.engine.api.request.StartWorkflowRequest(
                                         "", "raw spec"))))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("UUID가 아닌 ticketId로 시작 요청하면 400을 반환하고 workflow를 시작하지 않는다")
+    void start_nonUuidTicketId_returnsBadRequestWithoutStarting() throws Exception {
+        mockMvc.perform(post("/api/engine/workflow-runs")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                new com.example.worker.engine.api.request.StartWorkflowRequest(
+                                        "ticket-1", "raw spec"))))
+                .andExpect(status().isBadRequest());
+
+        verify(starter, never()).start(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("UUID ticketId로 시작 요청하면 정상적으로 workflow를 시작한다")
+    void start_uuidTicketId_startsWorkflow() throws Exception {
+        String ticketId = "123e4567-e89b-12d3-a456-426614174000";
+
+        mockMvc.perform(post("/api/engine/workflow-runs")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                new com.example.worker.engine.api.request.StartWorkflowRequest(
+                                        ticketId, "raw spec"))))
+                .andExpect(status().isAccepted());
+
+        verify(starter).start(anyString(), eq(ticketId), eq("raw spec"));
     }
 
     @Test
