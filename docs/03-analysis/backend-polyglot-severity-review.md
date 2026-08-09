@@ -22,7 +22,7 @@
 |---|---:|---:|
 | Critical | 0 | 0 |
 | High | 0 | 1 |
-| Medium | 1 | 1 |
+| Medium | 2 | 1 |
 | Low | 1 | 0 |
 
 ## Findings
@@ -48,6 +48,12 @@
 - Evidence: the Java polyglot smoke reached `PLANNING/RUNNING`; after planning approval it reached `WORKSPACE`, where the existing local activity intentionally throws `WORKSPACE stage is deferred in the local integration harness`.
 - Impact: this branch proves the Java → TypeScript Temporal → Gateway/Python planning path, not a complete Workspace → Implementation → QA run.
 - Status: Known scope boundary; requires a separate workspace-runtime task for full pipeline completion.
+
+### MEDIUM-RESOLVED-001 — Polyglot smoke result was not persisted as a review artifact
+
+- Evidence gap: the initial smoke result existed only in the orchestration session, so a reviewer could not reproduce the release decision from the repository alone.
+- Resolution: this document now records the exact workflow ID, configuration, observed stage, and deferred-stage boundary.
+- Status: Resolved by `8d7b847`.
 
 ### LOW-001 — Deprecated test annotation
 
